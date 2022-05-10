@@ -619,7 +619,11 @@ namespace DMSModelConfigDbUpdater
 
             UpdateGeneralParameter(generalParams, parameterType, nameToUse, false);
 
-            OnStatusEvent("In {0}, changed the {1} to {2}", mCurrentConfigDB, viewDescription, nameToUse);
+            // ReSharper disable once ConvertIfStatementToConditionalTernaryExpression
+            if (mOptions.PreviewUpdates)
+                OnStatusEvent("In {0}, would change {1} to {2}", mCurrentConfigDB, objectDescription, nameToUse);
+            else
+                OnStatusEvent("In {0}, changed {1} to {2}", mCurrentConfigDB, objectDescription, nameToUse);
 
             return nameToUse;
         }
@@ -682,6 +686,15 @@ namespace DMSModelConfigDbUpdater
                 return;
             }
 
+            if (mOptions.PreviewUpdates)
+            {
+                if (reportUpdate)
+                {
+                    OnStatusEvent("In {0}, would change {1} from {2} to {3}", mCurrentConfigDB, generalParamsKeyName, currentValue ?? "an empty string", newValue);
+                }
+
+                return;
+            }
 
             // Update the database
             using var dbCommand = mDbConnection.CreateCommand();

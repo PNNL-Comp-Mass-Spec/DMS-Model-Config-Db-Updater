@@ -11,7 +11,7 @@ namespace DMSModelConfigDbUpdater
         /// <summary>
         /// Program date
         /// </summary>
-        public const string PROGRAM_DATE = "May 9, 2022";
+        public const string PROGRAM_DATE = "May 10, 2022";
 
         [Option("Input", "I", ArgPosition = 1, HelpShowsDefault = false, IsInputFilePath = false,
             HelpText = "Directory with the DMS model config database files to update\n" +
@@ -34,6 +34,10 @@ namespace DMSModelConfigDbUpdater
                        "to pre-process a DDL file prior to calling sqlserver2pgsql.pl)\n" +
                        "Tab-delimited file that must include columns SourceTableName and TargetTableName")]
         public string TableNameMapFile { get; set; }
+
+        [Option("PreviewUpdates", "Preview", HelpShowsDefault = true,
+            HelpText = "When true, show changes that would be made")]
+        public bool PreviewUpdates { get; set; }
 
         [Option("RenameListReportView", "RenameList", HelpShowsDefault = true,
             HelpText = "When true, rename the list report view and columns")]
@@ -100,6 +104,8 @@ namespace DMSModelConfigDbUpdater
             {
                 Console.WriteLine(" {0,-30} {1}", "Table Name Map File:", PathUtils.CompactPathString(TableNameMapFile, 80));
             }
+
+            Console.WriteLine(" {0,-30} {1}", "Preview Updates:", PreviewUpdates);
 
             Console.WriteLine(" {0,-40} {1}", "Rename List Report View and Columns:", RenameListReportViewAndColumns);
 
