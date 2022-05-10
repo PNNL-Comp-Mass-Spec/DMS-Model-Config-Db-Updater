@@ -11,14 +11,14 @@ namespace DMSModelConfigDbUpdater
         /// <summary>
         /// Program date
         /// </summary>
-        public const string PROGRAM_DATE = "May 8, 2022";
+        public const string PROGRAM_DATE = "May 9, 2022";
 
         [Option("Input", "I", ArgPosition = 1, HelpShowsDefault = false, IsInputFilePath = false,
             HelpText = "Directory with the DMS model config database files to update\n" +
                        "The SQLite files should have the extension .db")]
         public string InputDirectory { get; set; }
 
-        [Option("Map", "M", HelpShowsDefault = false, IsInputFilePath = false,
+        [Option("FilenameFilter", "FileFilter", "F", HelpShowsDefault = false, IsInputFilePath = false,
             HelpText = "Filter for the model config databases to process, e.g. /F:dataset*.db")]
         public string FilenameFilter { get; set; }
 
@@ -34,6 +34,28 @@ namespace DMSModelConfigDbUpdater
                        "to pre-process a DDL file prior to calling sqlserver2pgsql.pl)\n" +
                        "Tab-delimited file that must include columns SourceTableName and TargetTableName")]
         public string TableNameMapFile { get; set; }
+
+        [Option("RenameListReportView", "RenameList", HelpShowsDefault = true,
+            HelpText = "When true, rename the list report view and columns")]
+        public bool RenameListReportViewAndColumns { get; set; }
+
+        [Option("RenameDetailReportView", "RenameDetail", HelpShowsDefault = true,
+            HelpText = "When true, rename the detail report view and columns")]
+        public bool RenameDetailReportViewAndColumns { get; set; }
+
+        [Option("RenameEntryPageView", "RenameEntry", HelpShowsDefault = true,
+            HelpText = "When true, rename the entry page view and columns\n" +
+                       "This also updates field names in the model config DB tables, since field names match the entry page view's column names")]
+        public bool RenameEntryPageViewAndColumns { get; set; }
+
+        [Option("RenameStoredProcedures", "RenameSPs", HelpShowsDefault = true,
+            HelpText = "When true, rename the referenced stored procedures to use snake case (does not change argument names)")]
+        public bool RenameStoredProcedures { get; set; }
+
+        [Option("UsePostgresSchema", "UsePgSchema", HelpShowsDefault = true,
+            HelpText = "When true, if the object name does not already have a schema and the db_group for the page family is defined, " +
+                       "preface object names with the PostgreSQL schema that applies to the database group")]
+        public bool UsePostgresSchema { get; set; }
 
         [Option("Verbose", "V", HelpShowsDefault = true,
             HelpText = "When true, display the old and new version of each updated line")]
@@ -65,21 +87,29 @@ namespace DMSModelConfigDbUpdater
         {
             Console.WriteLine("Options:");
 
-            Console.WriteLine(" {0,-35} {1}", "Input directory:", PathUtils.CompactPathString(InputDirectory, 80));
+            Console.WriteLine(" {0,-30} {1}", "Input Directory:", PathUtils.CompactPathString(InputDirectory, 80));
 
             if (!string.IsNullOrWhiteSpace(FilenameFilter))
             {
-                Console.WriteLine(" {0,-35} {1}", "Filename filter:", FilenameFilter);
+                Console.WriteLine(" {0,-30} {1}", "Filename Filter:", FilenameFilter);
             }
 
-            Console.WriteLine(" {0,-35} {1}", "View column map file:", PathUtils.CompactPathString(ViewColumnMapFile, 80));
+            Console.WriteLine(" {0,-30} {1}", "View Column Map File:", PathUtils.CompactPathString(ViewColumnMapFile, 80));
 
             if (!string.IsNullOrWhiteSpace(TableNameMapFile))
             {
-                Console.WriteLine(" {0,-35} {1}", "Table name map file:", PathUtils.CompactPathString(TableNameMapFile, 80));
+                Console.WriteLine(" {0,-30} {1}", "Table Name Map File:", PathUtils.CompactPathString(TableNameMapFile, 80));
             }
 
-            Console.WriteLine(" {0,-35} {1}", "Verbose Output:", VerboseOutput);
+            Console.WriteLine(" {0,-40} {1}", "Rename List Report View and Columns:", RenameListReportViewAndColumns);
+
+            Console.WriteLine(" {0,-40} {1}", "Rename Detail Report View and Columns:", RenameDetailReportViewAndColumns);
+
+            Console.WriteLine(" {0,-40} {1}", "Rename Entry Page View and Columns:", RenameEntryPageViewAndColumns);
+
+            Console.WriteLine(" {0,-40} {1}", "Rename Stored Procedures:", RenameStoredProcedures);
+
+            Console.WriteLine(" {0,-40} {1}", "Verbose output:", VerboseOutput);
 
             Console.WriteLine();
         }
