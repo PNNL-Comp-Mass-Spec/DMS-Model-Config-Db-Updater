@@ -37,6 +37,12 @@ namespace DMSModelConfigDbUpdater
         private readonly Dictionary<string, string> mViewNameMap;
 
         /// <summary>
+        /// Keys in this dictionary are view names, with schema, but without any quotes
+        /// Values are the full name for the view, as tracked by mViewColumnNameMap
+        /// </summary>
+        private readonly Dictionary<string, string> mViewNameMapWithSchema;
+
+        /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="options"></param>
@@ -49,6 +55,8 @@ namespace DMSModelConfigDbUpdater
             mViewColumnNameMap = new Dictionary<string, Dictionary<string, ColumnNameInfo>> (StringComparer.OrdinalIgnoreCase);
 
             mViewNameMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            mViewNameMapWithSchema = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
         private bool ColumnRenamed(string viewName, string currentColumnName, out string columnNameToUse)
@@ -110,6 +118,7 @@ namespace DMSModelConfigDbUpdater
         {
             mViewColumnNameMap.Clear();
             mViewNameMap.Clear();
+            mViewNameMapWithSchema.Clear();
 
             var viewColumnMapFile = new FileInfo(mOptions.ViewColumnMapFile);
 
@@ -219,13 +228,16 @@ namespace DMSModelConfigDbUpdater
 
                         var nameWithoutSchema = PossiblyUnquote(GetNameWithoutSchema(viewName));
 
-                        if (mViewNameMap.ContainsKey(nameWithoutSchema))
+                        if (!mViewNameMap.ContainsKey(nameWithoutSchema))
                         {
-                            OnWarningEvent("The view column map file has views with the same name but different schema; this is not supported");
-                            return false;
+                            mViewNameMap.Add(nameWithoutSchema, viewName);
                         }
 
-                        mViewNameMap.Add(nameWithoutSchema, viewName);
+                        var nameWithSchema = viewName.Replace("\"", string.Empty);
+                        if (!mViewNameMapWithSchema.ContainsKey(nameWithSchema))
+                        {
+                            mViewNameMapWithSchema.Add(nameWithSchema, viewName);
+                        }
                     }
 
                     var renamedColumns = mViewColumnNameMap[viewName];
