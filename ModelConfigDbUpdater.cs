@@ -67,22 +67,11 @@ namespace DMSModelConfigDbUpdater
                 return false;
             }
 
-            Dictionary<string, ColumnNameInfo> columnMap;
-
-            if (mViewNameMap.TryGetValue(viewName, out var nameWithSchema))
+            if (!TryGetColumnMap(viewName, out var columnMap))
             {
-                columnMap = mViewColumnNameMap[nameWithSchema];
-            }
-            else
-            {
-                if (!mViewColumnNameMap.TryGetValue(viewName, out var columnMap2))
-                {
-                    OnWarningEvent("View not found in mViewColumnNameMap: " + viewName);
-                    columnNameToUse = currentColumnName;
-                    return false;
-                }
-
-                columnMap = columnMap2;
+                OnWarningEvent("View not found in mViewColumnNameMap: " + viewName);
+                columnNameToUse = currentColumnName;
+                return false;
             }
 
             if (!columnMap.TryGetValue(currentColumnName, out var columnInfo))
@@ -657,6 +646,18 @@ namespace DMSModelConfigDbUpdater
             }
 
             return objectName;
+        }
+
+        private bool TryGetColumnMap(string viewName, out Dictionary<string, ColumnNameInfo> columnMap)
+        {
+            // ReSharper disable once InvertIf
+            if (mViewNameMap.TryGetValue(viewName, out var nameWithSchema))
+            {
+                columnMap = mViewColumnNameMap[nameWithSchema];
+                return true;
+            }
+
+            return mViewColumnNameMap.TryGetValue(viewName, out columnMap);
         }
 
         private void UpdateDetailReportHotlinks(List<FormFieldInfo> formFields, string detailReportView)
