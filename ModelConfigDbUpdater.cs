@@ -21,7 +21,10 @@ namespace DMSModelConfigDbUpdater
         private readonly ModelConfigDbUpdaterOptions mOptions;
 
         /// <summary>
+        /// Keys in this dictionary are view names, as read from the tab-delimited text file; names should include the schema and may be quoted
+        /// Values are dictionaries tracking renamed columns (keys are the original column name, values are information on the new name)
         /// </summary>
+        private readonly Dictionary<string, Dictionary<string, ColumnNameInfo>> mViewColumnNameMap;
 
         /// <summary>
         /// </summary>
@@ -35,6 +38,7 @@ namespace DMSModelConfigDbUpdater
             mOptions = options;
 
 
+            mViewColumnNameMap = new Dictionary<string, Dictionary<string, ColumnNameInfo>> (StringComparer.OrdinalIgnoreCase);
 
         }
 
@@ -78,14 +82,14 @@ namespace DMSModelConfigDbUpdater
             return objectName;
         }
 
-        private bool LoadNameMapFiles(out Dictionary<string, Dictionary<string, string>> viewColumnNameMap)
+        private bool LoadNameMapFiles()
         {
+            mViewColumnNameMap.Clear();
             var viewColumnMapFile = new FileInfo(mOptions.ViewColumnMapFile);
 
             if (!viewColumnMapFile.Exists)
             {
                 OnErrorEvent("View column map file not found: " + viewColumnMapFile.FullName);
-                viewColumnNameMap = new Dictionary<string, Dictionary<string, string>>();
                 return false;
             }
 
@@ -99,11 +103,9 @@ namespace DMSModelConfigDbUpdater
             // and values are a Dictionary of mappings of original column names to new column names in PostgreSQL;
             // names should not have double quotes around them
 
-            // Dictionary tableNameMapSynonyms mas original table names to new table names
+            // Dictionary tableNameMapSynonyms has original table names to new table names
 
-            var columnMapFileLoaded = LoadViewColumnMapFile(
-                viewColumnMapFile,
-                out viewColumnNameMap);
+            var columnMapFileLoaded = LoadViewColumnMapFile(viewColumnMapFile);
 
             if (!columnMapFileLoaded)
                 return false;
@@ -139,22 +141,18 @@ namespace DMSModelConfigDbUpdater
                 tableNameMapSynonyms.Add(item.SourceTableName, item.TargetTableName);
 
                 // Look for known renamed views and add new entries to viewColumnNameMap for any matches
-                if (viewColumnNameMap.TryGetValue(item.TargetTableName, out var renamedColumns))
+                if (mViewColumnNameMap.TryGetValue(item.TargetTableName, out var renamedColumns))
                 {
-                    viewColumnNameMap.Add(item.SourceTableName, renamedColumns);
+                    mViewColumnNameMap.Add(item.SourceTableName, renamedColumns);
                 }
             }
 
             return true;
         }
 
-        public bool LoadViewColumnMapFile(
-            FileSystemInfo columnMapFile,
-            out Dictionary<string, Dictionary<string, string>> viewColumnNameMap)
+        private bool LoadViewColumnMapFile(FileSystemInfo columnMapFile)
         {
             var linesRead = 0;
-
-            viewColumnNameMap = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
 
             try
             {
@@ -182,15 +180,16 @@ namespace DMSModelConfigDbUpdater
                     }
 
                     var viewName = lineParts[0];
+
                     var sourceColumnName = lineParts[1];
                     var newColumnName = lineParts[2];
 
-                    if (!viewColumnNameMap.ContainsKey(viewName))
+                    if (!mViewColumnNameMap.ContainsKey(viewName))
                     {
-                        viewColumnNameMap.Add(viewName, new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase));
+                        mViewColumnNameMap.Add(viewName, new Dictionary<string, ColumnNameInfo>(StringComparer.OrdinalIgnoreCase));
                     }
 
-                    var renamedColumns = viewColumnNameMap[viewName];
+                    var renamedColumns = mViewColumnNameMap[viewName];
 
                     if (renamedColumns.ContainsKey(sourceColumnName))
                     {
@@ -237,7 +236,7 @@ namespace DMSModelConfigDbUpdater
                 }
 
                 // Load the various name map files
-                if (!LoadNameMapFiles(out var viewColumnNameMap))
+                if (!LoadNameMapFiles())
                     return false;
 
                 string searchPattern;
@@ -270,9 +269,10 @@ namespace DMSModelConfigDbUpdater
                     searchPattern,
                     PathUtils.CompactPathString(inputDirectory.FullName, 80));
 
+                // ReSharper disable once ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
                 foreach (var modelConfigDb in filesToProcess)
                 {
-                    var success = ProcessFile(modelConfigDb, viewColumnNameMap);
+                    var success = ProcessFile(modelConfigDb);
 
                     if (!success)
                         return false;
@@ -287,7 +287,7 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        private bool ProcessFile(FileInfo modelConfigDb, Dictionary<string, Dictionary<string, string>> viewColumnNameMap)
+        private bool ProcessFile(FileSystemInfo modelConfigDb)
         {
             try
             {
