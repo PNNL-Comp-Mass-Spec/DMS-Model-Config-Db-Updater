@@ -16,7 +16,7 @@ namespace DMSModelConfigDbUpdater
         /// <summary>
         /// Match any character that is not a letter, number, or underscore
         /// </summary>
-        private readonly Regex mColumnCharNonStandardMatcher = new Regex("[^a-z0-9_]", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        private readonly Regex mColumnCharNonStandardMatcher = new("[^a-z0-9_]", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
         private string mCurrentConfigDB;
 
