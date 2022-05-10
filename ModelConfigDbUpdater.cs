@@ -27,7 +27,10 @@ namespace DMSModelConfigDbUpdater
         private readonly Dictionary<string, Dictionary<string, ColumnNameInfo>> mViewColumnNameMap;
 
         /// <summary>
+        /// Keys in this dictionary are view names, without schema and without any quotes
+        /// Values are the full name for the view, as tracked by mViewColumnNameMap
         /// </summary>
+        private readonly Dictionary<string, string> mViewNameMap;
 
         /// <summary>
         /// Constructor
@@ -40,6 +43,7 @@ namespace DMSModelConfigDbUpdater
 
             mViewColumnNameMap = new Dictionary<string, Dictionary<string, ColumnNameInfo>> (StringComparer.OrdinalIgnoreCase);
 
+            mViewNameMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -85,6 +89,8 @@ namespace DMSModelConfigDbUpdater
         private bool LoadNameMapFiles()
         {
             mViewColumnNameMap.Clear();
+            mViewNameMap.Clear();
+
             var viewColumnMapFile = new FileInfo(mOptions.ViewColumnMapFile);
 
             if (!viewColumnMapFile.Exists)
@@ -182,11 +188,24 @@ namespace DMSModelConfigDbUpdater
                     var viewName = lineParts[0];
 
                     var sourceColumnName = lineParts[1];
+
                     var newColumnName = lineParts[2];
+
+                    var isColumnAlias = lineParts.Length > 3 && bool.TryParse(lineParts[3], out var isAlias) && isAlias;
 
                     if (!mViewColumnNameMap.ContainsKey(viewName))
                     {
                         mViewColumnNameMap.Add(viewName, new Dictionary<string, ColumnNameInfo>(StringComparer.OrdinalIgnoreCase));
+
+                        var nameWithoutSchema = PossiblyUnquote(GetNameWithoutSchema(viewName));
+
+                        if (mViewNameMap.ContainsKey(nameWithoutSchema))
+                        {
+                            OnWarningEvent("The view column map file has views with the same name but different schema; this is not supported");
+                            return false;
+                        }
+
+                        mViewNameMap.Add(nameWithoutSchema, viewName);
                     }
 
                     var renamedColumns = mViewColumnNameMap[viewName];

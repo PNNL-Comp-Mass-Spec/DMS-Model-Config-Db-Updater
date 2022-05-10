@@ -50,6 +50,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ColumnNameInfo.cs" />
     <Compile Include="ModelConfigDbUpdater.cs" />
     <Compile Include="ModelConfigDbUpdaterOptions.cs" />
     <Compile Include="Program.cs" />
