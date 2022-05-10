@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using PRISM;
 using TableColumnNameMapContainer;
@@ -14,21 +13,18 @@ namespace DMSModelConfigDbUpdater
         // Ignore Spelling: dms
 
         /// <summary>
-        /// Match any lowercase letter
-        /// </summary>
-        private readonly Regex mAnyLowerMatcher;
-
-        /// <summary>
-        /// Match a lowercase letter followed by an uppercase letter
-        /// </summary>
-        private readonly Regex mCamelCaseMatcher;
-
-        /// <summary>
         /// Match any character that is not a letter, number, or underscore
         /// </summary>
-        private readonly Regex mColumnCharNonStandardMatcher;
+        private readonly Regex mColumnCharNonStandardMatcher = new Regex("[^a-z0-9_]", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
 
         private readonly ModelConfigDbUpdaterOptions mOptions;
+
+        /// <summary>
+        /// </summary>
+
+        /// <summary>
+        /// </summary>
 
         /// <summary>
         /// Constructor
@@ -38,11 +34,8 @@ namespace DMSModelConfigDbUpdater
         {
             mOptions = options;
 
-            mAnyLowerMatcher = new Regex("[a-z]", RegexOptions.Compiled | RegexOptions.Singleline);
 
-            mCamelCaseMatcher = new Regex("(?<LowerLetter>[a-z])(?<UpperLetter>[A-Z])", RegexOptions.Compiled);
 
-            mColumnCharNonStandardMatcher = new Regex("[^a-z0-9_]", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
         }
 
         /// <summary>
