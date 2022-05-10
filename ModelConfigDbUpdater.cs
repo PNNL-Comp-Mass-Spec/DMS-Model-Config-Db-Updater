@@ -253,7 +253,7 @@ namespace DMSModelConfigDbUpdater
             if (!mOptions.UsePostgresSchema || objectName.Contains("."))
                 return objectName;
 
-            return generalParams.DatabaseGroup.ToLower() switch
+            return generalParams.Parameters[GeneralParameters.ParameterType.DatabaseGroup].ToLower() switch
             {
                 "package" => "dpkg." + objectName,
                 "ontology" => "ont." + objectName,
@@ -484,59 +484,13 @@ namespace DMSModelConfigDbUpdater
                     var paramName = SQLiteUtilities.GetString(reader, "name");
                     var paramValue = SQLiteUtilities.GetString(reader, "value");
 
-                    switch (paramName.ToLower())
+                    // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+                    foreach (var item in generalParams.FieldNames)
                     {
-                        case "list_report_data_table":
-                            generalParams.ListReportView = paramValue;
-                            break;
-
-                        case "list_report_data_cols":
-                            generalParams.ListReportDataColumns = paramValue;
-                            break;
-
-                        case "list_report_data_sort_col":
-                            generalParams.ListReportSortColumn = paramValue;
-                            break;
-
-                        case "list_report_sproc":
-                            generalParams.ListReportStoredProcedure = paramValue;
-                            break;
-
-                        case "detail_report_data_table":
-                            generalParams.DetailReportView = paramValue;
-                            break;
-
-                        case "detail_report_data_id_col":
-                            generalParams.DetailReportDataIdColumn = paramValue;
-                            break;
-
-                        case "detail_report_sproc":
-                            generalParams.DetailReportStoredProcedure = paramValue;
-                            break;
-
-                        case "entry_page_data_table":
-                            generalParams.EntryPageView = paramValue;
-                            break;
-
-                        case "entry_page_data_id_col":
-                            generalParams.EntryPageDataIdColumn = paramValue;
-                            break;
-
-                        case "entry_sproc":
-                            generalParams.EntryStoredProcedure = paramValue;
-                            break;
-
-                        case "my_db_group":
-                            generalParams.DatabaseGroup = paramValue;
-                            break;
-
-                        case "operations_sproc":
-                            generalParams.OperationsStoredProcedure = paramValue;
-                            break;
-
-                        case "post_submission_detail_id":
-                            generalParams.PostSubmissionDetailId = paramValue;
-                            break;
+                        if (paramName.Equals(item.Value))
+                        {
+                            generalParams.Parameters[item.Key] = paramValue;
+                        }
                     }
                 }
 
@@ -553,17 +507,13 @@ namespace DMSModelConfigDbUpdater
         {
             try
             {
-                var viewNameToUse = RenameView(generalParams, generalParams.EntryPageView, "entry page view", "entry_page_data_table");
+                var viewNameToUse = RenameViewOrProcedure(generalParams, GeneralParameters.ParameterType.EntryPageView);
                 if (string.IsNullOrWhiteSpace(viewNameToUse))
                     return string.Empty;
 
-                generalParams.EntryPageView = viewNameToUse;
-
-                // ReSharper disable once InvertIf
-                if (!ColumnRenamed(generalParams.EntryPageView, generalParams.EntryPageDataIdColumn, out var columnNameToUse))
+                if (!ColumnRenamed(viewNameToUse, generalParams.Parameters[GeneralParameters.ParameterType.EntryPageDataIdColumn], out var columnNameToUse))
                 {
-                    UpdateGeneralParameter("entry_page_data_id_col", generalParams.EntryPageDataIdColumn, columnNameToUse);
-                    generalParams.EntryPageDataIdColumn = columnNameToUse;
+                    UpdateGeneralParameter(generalParams, GeneralParameters.ParameterType.EntryPageDataIdColumn, columnNameToUse);
                 }
 
                 return viewNameToUse;
@@ -579,17 +529,13 @@ namespace DMSModelConfigDbUpdater
         {
             try
             {
-                var viewNameToUse = RenameView(generalParams, generalParams.DetailReportView, "detail report view", "detail_report_data_table");
+                var viewNameToUse = RenameViewOrProcedure(generalParams, GeneralParameters.ParameterType.DetailReportView);
                 if (string.IsNullOrWhiteSpace(viewNameToUse))
                     return string.Empty;
 
-                generalParams.DetailReportView = viewNameToUse;
-
-                // ReSharper disable once InvertIf
-                if (!ColumnRenamed(generalParams.DetailReportView, generalParams.DetailReportDataIdColumn, out var columnNameToUse))
+                if (!ColumnRenamed(viewNameToUse, generalParams.Parameters[GeneralParameters.ParameterType.DetailReportDataIdColumn], out var columnNameToUse))
                 {
-                    UpdateGeneralParameter("detail_report_data_id_col", generalParams.DetailReportDataIdColumn, columnNameToUse);
-                    generalParams.DetailReportDataIdColumn = columnNameToUse;
+                    UpdateGeneralParameter(generalParams, GeneralParameters.ParameterType.DetailReportDataIdColumn, columnNameToUse);
                 }
 
                 return viewNameToUse;
@@ -605,19 +551,16 @@ namespace DMSModelConfigDbUpdater
         {
             try
             {
-                var viewNameToUse = RenameView(generalParams, generalParams.ListReportView, "list report view", "list_report_data_table");
+                var viewNameToUse = RenameViewOrProcedure(generalParams, GeneralParameters.ParameterType.ListReportView);
                 if (string.IsNullOrWhiteSpace(viewNameToUse))
                     return string.Empty;
 
-                generalParams.ListReportView = viewNameToUse;
-
-                if (ColumnRenamed(generalParams.ListReportView, generalParams.ListReportSortColumn, out var columnNameToUse))
+                if (!ColumnRenamed(viewNameToUse, generalParams.Parameters[GeneralParameters.ParameterType.ListReportSortColumn], out var columnNameToUse))
                 {
-                    UpdateGeneralParameter("list_report_data_sort_col", generalParams.ListReportSortColumn, columnNameToUse);
-                    generalParams.ListReportSortColumn = columnNameToUse;
+                    UpdateGeneralParameter(generalParams, GeneralParameters.ParameterType.ListReportSortColumn, columnNameToUse);
                 }
 
-                if (!string.IsNullOrWhiteSpace(generalParams.ListReportDataColumns))
+                if (!string.IsNullOrWhiteSpace(generalParams.Parameters[GeneralParameters.ParameterType.ListReportDataColumns]))
                 {
                     UpdateListReportDataColumns(generalParams);
                 }
@@ -638,7 +581,10 @@ namespace DMSModelConfigDbUpdater
         {
             try
             {
-
+                RenameViewOrProcedure(generalParams, GeneralParameters.ParameterType.ListReportSP);
+                RenameViewOrProcedure(generalParams, GeneralParameters.ParameterType.DetailReportSP);
+                RenameViewOrProcedure(generalParams, GeneralParameters.ParameterType.EntryPageSP);
+                RenameViewOrProcedure(generalParams, GeneralParameters.ParameterType.OperationsSP);
             }
             catch (Exception ex)
             {
@@ -647,30 +593,31 @@ namespace DMSModelConfigDbUpdater
         }
 
         /// <summary>
-        /// Rename the List Report, Detail Report, or Entry Page view
+        /// Change a view or stored procedure name to snake case
         /// </summary>
         /// <remarks>Do not put an exception handler in this method</remarks>
         /// <param name="generalParams"></param>
-        /// <param name="currentViewName"></param>
-        /// <param name="viewDescription"></param>
-        /// <param name="generalParamsKeyName"></param>
-        /// <returns>The view name to use (either the original if already in the correct format, or the new name)</returns>
-        private string RenameView(GeneralParameters generalParams, string currentViewName, string viewDescription, string generalParamsKeyName)
+        /// <param name="parameterType"></param>
+        /// <returns>The object name to use (either the original if already in the correct format, or the new name)</returns>
+        private string RenameViewOrProcedure(GeneralParameters generalParams, GeneralParameters.ParameterType parameterType)
         {
-            if (string.IsNullOrWhiteSpace(currentViewName))
+            var currentName = generalParams.Parameters[parameterType];
+            var objectDescription = generalParams.FieldDescriptions[parameterType];
+
+            if (string.IsNullOrWhiteSpace(generalParams.Parameters[parameterType]))
                 return string.Empty;
 
-            var updatedName = NameUpdater.ConvertNameToSnakeCase(currentViewName);
+            var updatedName = NameUpdater.ConvertNameToSnakeCase(currentName);
 
             var nameToUse = PossiblyAddSchema(generalParams, updatedName);
 
-            if (currentViewName.Equals(nameToUse))
+            if (currentName.Equals(nameToUse))
             {
-                OnStatusEvent("In {0} the {1} is already {2}", mCurrentConfigDB, viewDescription, nameToUse);
+                OnStatusEvent("In {0}, {1} is already {2}", mCurrentConfigDB, objectDescription, nameToUse);
                 return nameToUse;
             }
 
-            UpdateGeneralParameter(generalParamsKeyName, currentViewName, nameToUse, false);
+            UpdateGeneralParameter(generalParams, parameterType, nameToUse, false);
 
             OnStatusEvent("In {0}, changed the {1} to {2}", mCurrentConfigDB, viewDescription, nameToUse);
 
@@ -720,8 +667,11 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        private void UpdateGeneralParameter(string generalParamsKeyName, string currentValue, string newValue, bool reportUpdate = true)
+        private void UpdateGeneralParameter(GeneralParameters generalParams, GeneralParameters.ParameterType parameterType, string newValue, bool reportUpdate = true)
         {
+            var currentValue = generalParams.Parameters[parameterType];
+            var generalParamsKeyName = generalParams.FieldNames[parameterType];
+
             if (!string.IsNullOrWhiteSpace(currentValue) && currentValue.Equals(newValue))
             {
                 if (reportUpdate)
@@ -732,11 +682,16 @@ namespace DMSModelConfigDbUpdater
                 return;
             }
 
+
+            // Update the database
             using var dbCommand = mDbConnection.CreateCommand();
 
             dbCommand.CommandText = string.Format("UPDATE general_params set value = '{0}' WHERE name = '{1}'", newValue, generalParamsKeyName);
 
             dbCommand.ExecuteNonQuery();
+
+            // Update the cached value
+            generalParams.Parameters[parameterType] = newValue;
 
             if (reportUpdate)
             {
@@ -748,7 +703,8 @@ namespace DMSModelConfigDbUpdater
         {
             try
             {
-                var columnList = generalParams.ListReportDataColumns.Split(',');
+                var columnList = generalParams.Parameters[GeneralParameters.ParameterType.ListReportDataColumns].Split(',');
+
                 var updatedColumns = new List<string>();
 
                 foreach (var currentColumn in columnList)
@@ -768,7 +724,7 @@ namespace DMSModelConfigDbUpdater
                         aliasName = string.Empty;
                     }
 
-                    if (ColumnRenamed(generalParams.ListReportView, columnNameToFind, out var newColumnName))
+                    if (ColumnRenamed(generalParams.Parameters[GeneralParameters.ParameterType.ListReportView], columnNameToFind, out var newColumnName))
                     {
                         if (string.IsNullOrWhiteSpace(aliasName))
                         {
@@ -788,8 +744,7 @@ namespace DMSModelConfigDbUpdater
 
                 var updatedColumnList = string.Join(", ", updatedColumns);
 
-                UpdateGeneralParameter("list_report_data_cols", generalParams.ListReportDataColumns, updatedColumnList);
-                generalParams.ListReportDataColumns = updatedColumnList;
+                UpdateGeneralParameter(generalParams, GeneralParameters.ParameterType.ListReportDataColumns, updatedColumnList);
             }
             catch (Exception ex)
             {
