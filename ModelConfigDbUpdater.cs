@@ -11,7 +11,7 @@ namespace DMSModelConfigDbUpdater
 {
     public class ModelConfigDbUpdater : EventNotifier
     {
-        // Ignore Spelling: dms
+        // Ignore Spelling: dms, dpkg, mc, ont, sw
 
         /// <summary>
         /// Match any character that is not a letter, number, or underscore
@@ -51,25 +51,40 @@ namespace DMSModelConfigDbUpdater
             mViewNameMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
-        /// <summary>
-        /// Convert the object name to snake_case
-        /// </summary>
-        /// <param name="objectName"></param>
-        private string ConvertNameToSnakeCase(string objectName)
+        private bool ColumnRenamed(string viewName, string currentColumnName, out string columnNameToUse)
         {
-            if (!mAnyLowerMatcher.IsMatch(objectName))
+            if (string.IsNullOrWhiteSpace(currentColumnName))
             {
-                // objectName contains no lowercase letters; simply change to lowercase and return
-                return objectName.ToLower();
+                columnNameToUse = string.Empty;
+                return false;
             }
 
-            var match = mCamelCaseMatcher.Match(objectName);
+            Dictionary<string, ColumnNameInfo> columnMap;
 
-            var updatedName = match.Success
-                ? mCamelCaseMatcher.Replace(objectName, "${LowerLetter}_${UpperLetter}")
-                : objectName;
+            if (mViewNameMap.TryGetValue(viewName, out var nameWithSchema))
+            {
+                columnMap = mViewColumnNameMap[nameWithSchema];
+            }
+            else
+            {
+                if (!mViewColumnNameMap.TryGetValue(viewName, out var columnMap2))
+                {
+                    OnWarningEvent("View not found in mViewColumnNameMap: " + viewName);
+                    columnNameToUse = currentColumnName;
+                    return false;
+                }
 
-            return updatedName.ToLower();
+                columnMap = columnMap2;
+            }
+
+            if (!columnMap.TryGetValue(currentColumnName, out var columnInfo))
+            {
+                columnNameToUse = currentColumnName;
+                return false;
+            }
+
+            columnNameToUse = columnInfo.NewColumnName;
+            return !currentColumnName.Equals(columnNameToUse);
         }
 
         /// <summary>
@@ -221,7 +236,7 @@ namespace DMSModelConfigDbUpdater
                         continue;
                     }
 
-                    renamedColumns.Add(sourceColumnName, newColumnName);
+                    renamedColumns.Add(sourceColumnName, new ColumnNameInfo(sourceColumnName, newColumnName, isColumnAlias));
                 }
 
                 return true;
@@ -233,6 +248,45 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
+        private string PossiblyAddSchema(GeneralParameters generalParams, string objectName)
+        {
+            if (!mOptions.UsePostgresSchema || objectName.Contains("."))
+                return objectName;
+
+            return generalParams.DatabaseGroup.ToLower() switch
+            {
+                "package" => "dpkg." + objectName,
+                "ontology" => "ont." + objectName,
+                "broker" => "sw." + objectName,
+                "capture" => "cap." + objectName,
+                "manager_control" => "mc." + objectName,
+                _ => objectName
+            };
+        }
+
+        /// <summary>
+        /// If objectName contains characters other than A-Z, a-z, 0-9, or an underscore, surround the name with square brackets or double quotes
+        /// </summary>
+        /// <param name="objectName"></param>
+        /// <param name="quoteWithSquareBrackets"></param>
+        /// <param name="alwaysQuoteNames"></param>
+        protected string PossiblyQuoteName(string objectName, bool quoteWithSquareBrackets = false, bool alwaysQuoteNames = false)
+        {
+            if (!alwaysQuoteNames &&
+                !mColumnCharNonStandardMatcher.Match(objectName).Success)
+            {
+                return objectName;
+            }
+
+            if (quoteWithSquareBrackets)
+            {
+                // SQL Server quotes names with square brackets
+                return '[' + objectName + ']';
+            }
+
+            // PostgreSQL quotes names with double quotes
+            return '"' + objectName + '"';
+        }
 
         /// <summary>
         /// If objectName only has letters, numbers, or underscores, remove the double quotes surrounding it
@@ -343,6 +397,35 @@ namespace DMSModelConfigDbUpdater
 
                 if (!formFieldsLoaded)
                     return false;
+
+                if (mOptions.RenameEntryPageViewAndColumns)
+                {
+                    var entryPageView = RenameEntryPageView(generalParams);
+
+                    // Update form_fields, form_field_choosers, form_field_options, and external_sources
+                    UpdateFormFields(formFields, entryPageView);
+                }
+
+                if (mOptions.RenameListReportViewAndColumns)
+                {
+                    var listReportView = RenameListReportView(generalParams);
+                    UpdateListReportHotlinks(formFields, listReportView);
+
+                    // Update list_report_primary_filter and primary_filter_choosers
+                    UpdateListReportPrimaryFilter(formFields, listReportView);
+                }
+
+                if (mOptions.RenameDetailReportViewAndColumns)
+                {
+                    var detailReportView = RenameDetailReportView(generalParams);
+                    UpdateDetailReportHotlinks(formFields, detailReportView);
+                }
+
+                if (mOptions.RenameStoredProcedures)
+                {
+                    RenameStoredProcedures(generalParams);
+                }
+
                 mCurrentConfigDB = string.Empty;
                 return true;
             }
@@ -466,18 +549,276 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
+        private string RenameEntryPageView(GeneralParameters generalParams)
+        {
+            try
+            {
+                var viewNameToUse = RenameView(generalParams, generalParams.EntryPageView, "entry page view", "entry_page_data_table");
+                if (string.IsNullOrWhiteSpace(viewNameToUse))
+                    return string.Empty;
+
+                generalParams.EntryPageView = viewNameToUse;
+
+                // ReSharper disable once InvertIf
+                if (!ColumnRenamed(generalParams.EntryPageView, generalParams.EntryPageDataIdColumn, out var columnNameToUse))
+                {
+                    UpdateGeneralParameter("entry_page_data_id_col", generalParams.EntryPageDataIdColumn, columnNameToUse);
+                    generalParams.EntryPageDataIdColumn = columnNameToUse;
+                }
+
+                return viewNameToUse;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in RenameEntryPageView", ex);
+                return string.Empty;
+            }
+        }
+
+        private string RenameDetailReportView(GeneralParameters generalParams)
+        {
+            try
+            {
+                var viewNameToUse = RenameView(generalParams, generalParams.DetailReportView, "detail report view", "detail_report_data_table");
+                if (string.IsNullOrWhiteSpace(viewNameToUse))
+                    return string.Empty;
+
+                generalParams.DetailReportView = viewNameToUse;
+
+                // ReSharper disable once InvertIf
+                if (!ColumnRenamed(generalParams.DetailReportView, generalParams.DetailReportDataIdColumn, out var columnNameToUse))
+                {
+                    UpdateGeneralParameter("detail_report_data_id_col", generalParams.DetailReportDataIdColumn, columnNameToUse);
+                    generalParams.DetailReportDataIdColumn = columnNameToUse;
+                }
+
+                return viewNameToUse;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in RenameDetailReportView", ex);
+                return string.Empty;
+            }
+        }
+
+        private string RenameListReportView(GeneralParameters generalParams)
+        {
+            try
+            {
+                var viewNameToUse = RenameView(generalParams, generalParams.ListReportView, "list report view", "list_report_data_table");
+                if (string.IsNullOrWhiteSpace(viewNameToUse))
+                    return string.Empty;
+
+                generalParams.ListReportView = viewNameToUse;
+
+                if (ColumnRenamed(generalParams.ListReportView, generalParams.ListReportSortColumn, out var columnNameToUse))
+                {
+                    UpdateGeneralParameter("list_report_data_sort_col", generalParams.ListReportSortColumn, columnNameToUse);
+                    generalParams.ListReportSortColumn = columnNameToUse;
+                }
+
+                if (!string.IsNullOrWhiteSpace(generalParams.ListReportDataColumns))
+                {
+                    UpdateListReportDataColumns(generalParams);
+                }
+
+                return viewNameToUse;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in RenameListReportView", ex);
+                return string.Empty;
+            }
+        }
+
         /// <summary>
-        /// If the object name begins and ends with double quotes, remove them
+        /// Convert stored procedure names to snake case
+        /// </summary>
+        private void RenameStoredProcedures(GeneralParameters generalParams)
+        {
+            try
+            {
+
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in RenameStoredProcedures", ex);
+            }
+        }
+
+        /// <summary>
+        /// Rename the List Report, Detail Report, or Entry Page view
+        /// </summary>
+        /// <remarks>Do not put an exception handler in this method</remarks>
+        /// <param name="generalParams"></param>
+        /// <param name="currentViewName"></param>
+        /// <param name="viewDescription"></param>
+        /// <param name="generalParamsKeyName"></param>
+        /// <returns>The view name to use (either the original if already in the correct format, or the new name)</returns>
+        private string RenameView(GeneralParameters generalParams, string currentViewName, string viewDescription, string generalParamsKeyName)
+        {
+            if (string.IsNullOrWhiteSpace(currentViewName))
+                return string.Empty;
+
+            var updatedName = NameUpdater.ConvertNameToSnakeCase(currentViewName);
+
+            var nameToUse = PossiblyAddSchema(generalParams, updatedName);
+
+            if (currentViewName.Equals(nameToUse))
+            {
+                OnStatusEvent("In {0} the {1} is already {2}", mCurrentConfigDB, viewDescription, nameToUse);
+                return nameToUse;
+            }
+
+            UpdateGeneralParameter(generalParamsKeyName, currentViewName, nameToUse, false);
+
+            OnStatusEvent("In {0}, changed the {1} to {2}", mCurrentConfigDB, viewDescription, nameToUse);
+
+            return nameToUse;
+        }
+
+        /// <summary>
+        /// If the object name begins and ends with square brackets or double quotes, remove them
         /// </summary>
         /// <param name="objectName"></param>
         private static string TrimQuotes(string objectName)
         {
+            if (objectName.StartsWith("[") && objectName.EndsWith("]"))
+            {
+                return objectName.Substring(1, objectName.Length - 2);
+            }
+
             if (objectName.StartsWith("\"") && objectName.EndsWith("\""))
             {
                 return objectName.Substring(1, objectName.Length - 2);
             }
 
             return objectName;
+        }
+
+        private void UpdateDetailReportHotlinks(List<FormFieldInfo> formFields, string detailReportView)
+        {
+            try
+            {
+
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in UpdateDetailReportHotlinks", ex);
+            }
+        }
+
+        private void UpdateFormFields(List<FormFieldInfo> formFields, string entryPageView)
+        {
+            try
+            {
+
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in UpdateFormFields", ex);
+            }
+        }
+
+        private void UpdateGeneralParameter(string generalParamsKeyName, string currentValue, string newValue, bool reportUpdate = true)
+        {
+            if (!string.IsNullOrWhiteSpace(currentValue) && currentValue.Equals(newValue))
+            {
+                if (reportUpdate)
+                {
+                    OnStatusEvent("In {0}, {1} is already {2}", mCurrentConfigDB, generalParamsKeyName, newValue);
+                }
+
+                return;
+            }
+
+            using var dbCommand = mDbConnection.CreateCommand();
+
+            dbCommand.CommandText = string.Format("UPDATE general_params set value = '{0}' WHERE name = '{1}'", newValue, generalParamsKeyName);
+
+            dbCommand.ExecuteNonQuery();
+
+            if (reportUpdate)
+            {
+                OnStatusEvent("In {0}, changed {1} from {2} to {3}", mCurrentConfigDB, generalParamsKeyName, currentValue ?? "an empty string", newValue);
+            }
+        }
+
+        private void UpdateListReportDataColumns(GeneralParameters generalParams)
+        {
+            try
+            {
+                var columnList = generalParams.ListReportDataColumns.Split(',');
+                var updatedColumns = new List<string>();
+
+                foreach (var currentColumn in columnList)
+                {
+                    var asIndex = currentColumn.IndexOf(" AS ", StringComparison.OrdinalIgnoreCase);
+                    string columnNameToFind;
+                    string aliasName;
+
+                    if (asIndex > 0)
+                    {
+                        columnNameToFind = TrimQuotes(currentColumn.Substring(0, asIndex));
+                        aliasName = currentColumn.Substring(asIndex);
+                    }
+                    else
+                    {
+                        columnNameToFind = TrimQuotes(currentColumn);
+                        aliasName = string.Empty;
+                    }
+
+                    if (ColumnRenamed(generalParams.ListReportView, columnNameToFind, out var newColumnName))
+                    {
+                        if (string.IsNullOrWhiteSpace(aliasName))
+                        {
+                            updatedColumns.Add(PossiblyQuoteName(newColumnName));
+                        }
+                        else
+                        {
+                            var nameWithAlias = PossiblyQuoteName(newColumnName) + aliasName;
+                            updatedColumns.Add(nameWithAlias);
+                        }
+                    }
+                    else
+                    {
+                        updatedColumns.Add(currentColumn);
+                    }
+                }
+
+                var updatedColumnList = string.Join(", ", updatedColumns);
+
+                UpdateGeneralParameter("list_report_data_cols", generalParams.ListReportDataColumns, updatedColumnList);
+                generalParams.ListReportDataColumns = updatedColumnList;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in UpdateListReportDataColumns", ex);
+            }
+        }
+
+        private void UpdateListReportHotlinks(List<FormFieldInfo> formFields, string listReportView)
+        {
+            try
+            {
+
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in UpdateListReportHotlinks", ex);
+            }
+        }
+
+        private void UpdateListReportPrimaryFilter(List<FormFieldInfo> formFields, string listReportView)
+        {
+            try
+            {
+
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in UpdateListReportPrimaryFilter", ex);
+            }
         }
     }
 }
