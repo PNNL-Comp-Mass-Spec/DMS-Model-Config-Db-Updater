@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -17,6 +18,9 @@ namespace DMSModelConfigDbUpdater
         /// </summary>
         private readonly Regex mColumnCharNonStandardMatcher = new Regex("[^a-z0-9_]", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
+        private string mCurrentConfigDB;
+
+        private SQLiteConnection mDbConnection;
 
         private readonly ModelConfigDbUpdaterOptions mOptions;
 
@@ -40,6 +44,7 @@ namespace DMSModelConfigDbUpdater
         {
             mOptions = options;
 
+            mCurrentConfigDB = string.Empty;
 
             mViewColumnNameMap = new Dictionary<string, Dictionary<string, ColumnNameInfo>> (StringComparer.OrdinalIgnoreCase);
 
@@ -228,6 +233,7 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
+
         /// <summary>
         /// If objectName only has letters, numbers, or underscores, remove the double quotes surrounding it
         /// </summary>
@@ -263,12 +269,13 @@ namespace DMSModelConfigDbUpdater
                 {
                     searchPattern = "*.db";
                 }
+                else if (mOptions.FilenameFilter.EndsWith(".db", StringComparison.OrdinalIgnoreCase))
+                {
+                    searchPattern = mOptions.FilenameFilter;
+                }
                 else
                 {
-                    if (mOptions.FilenameFilter.EndsWith(".db", StringComparison.OrdinalIgnoreCase))
-                        searchPattern = mOptions.FilenameFilter;
-                    else
-                        searchPattern = mOptions.FilenameFilter + ".db";
+                    searchPattern = mOptions.FilenameFilter + ".db";
                 }
 
                 var filesToProcess = inputDirectory.GetFiles(searchPattern).ToList();
@@ -310,11 +317,151 @@ namespace DMSModelConfigDbUpdater
         {
             try
             {
+                var connectionString = "Data Source=" + modelConfigDb.FullName + "; Version=3; DateTimeFormat=Ticks; Read Only=False;";
+
+                // When calling the constructor, optionally set parseViaFramework to true if reading SqLite files located on a network share or in read-only folders
+                mDbConnection = new SQLiteConnection(connectionString, true);
+
+                mCurrentConfigDB = modelConfigDb.Name;
+
+                try
+                {
+                    mDbConnection.Open();
+                }
+                catch (Exception ex)
+                {
+                    OnErrorEvent("Error opening SQLite database " + modelConfigDb.Name, ex);
+                    return false;
+                }
+
+                var generalParamsLoaded = ReadGeneralParams(out var generalParams);
+
+                if (!generalParamsLoaded)
+                    return false;
+
+                var formFieldsLoaded = ReadFormFields(out var formFields);
+
+                if (!formFieldsLoaded)
+                    return false;
+                mCurrentConfigDB = string.Empty;
                 return true;
             }
             catch (Exception ex)
             {
                 OnErrorEvent("Error in ProcessFile", ex);
+                mCurrentConfigDB = string.Empty;
+                return false;
+            }
+        }
+
+        private bool ReadFormFields(out List<FormFieldInfo> formFields)
+        {
+            formFields = new List<FormFieldInfo>();
+
+            try
+            {
+                using var dbCommand = mDbConnection.CreateCommand();
+
+                dbCommand.CommandText = "SELECT id, name, label FROM form_fields";
+
+                using var reader = dbCommand.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    var id = SQLiteUtilities.GetInt32(reader, "id");
+                    var name = SQLiteUtilities.GetString(reader, "name");
+                    var label = SQLiteUtilities.GetString(reader, "label");
+
+                    formFields.Add(new FormFieldInfo(id, name, label));
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ReadFormFields", ex);
+                return false;
+            }
+        }
+
+        private bool ReadGeneralParams(out GeneralParameters generalParams)
+        {
+            generalParams = new GeneralParameters();
+
+            try
+            {
+                using var dbCommand = mDbConnection.CreateCommand();
+
+                dbCommand.CommandText = "SELECT name, value FROM general_params";
+
+                using var reader = dbCommand.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    var paramName = SQLiteUtilities.GetString(reader, "name");
+                    var paramValue = SQLiteUtilities.GetString(reader, "value");
+
+                    switch (paramName.ToLower())
+                    {
+                        case "list_report_data_table":
+                            generalParams.ListReportView = paramValue;
+                            break;
+
+                        case "list_report_data_cols":
+                            generalParams.ListReportDataColumns = paramValue;
+                            break;
+
+                        case "list_report_data_sort_col":
+                            generalParams.ListReportSortColumn = paramValue;
+                            break;
+
+                        case "list_report_sproc":
+                            generalParams.ListReportStoredProcedure = paramValue;
+                            break;
+
+                        case "detail_report_data_table":
+                            generalParams.DetailReportView = paramValue;
+                            break;
+
+                        case "detail_report_data_id_col":
+                            generalParams.DetailReportDataIdColumn = paramValue;
+                            break;
+
+                        case "detail_report_sproc":
+                            generalParams.DetailReportStoredProcedure = paramValue;
+                            break;
+
+                        case "entry_page_data_table":
+                            generalParams.EntryPageView = paramValue;
+                            break;
+
+                        case "entry_page_data_id_col":
+                            generalParams.EntryPageDataIdColumn = paramValue;
+                            break;
+
+                        case "entry_sproc":
+                            generalParams.EntryStoredProcedure = paramValue;
+                            break;
+
+                        case "my_db_group":
+                            generalParams.DatabaseGroup = paramValue;
+                            break;
+
+                        case "operations_sproc":
+                            generalParams.OperationsStoredProcedure = paramValue;
+                            break;
+
+                        case "post_submission_detail_id":
+                            generalParams.PostSubmissionDetailId = paramValue;
+                            break;
+                    }
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ReadGeneralParams", ex);
                 return false;
             }
         }
