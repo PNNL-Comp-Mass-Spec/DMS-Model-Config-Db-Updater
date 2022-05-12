@@ -215,7 +215,7 @@ namespace DMSModelConfigDbUpdater
                     {
                         mViewColumnNameMap.Add(viewName, new Dictionary<string, ColumnNameInfo>(StringComparer.OrdinalIgnoreCase));
 
-                        var nameWithoutSchema = PossiblyUnquote(GetNameWithoutSchema(viewName));
+                        var nameWithoutSchema = ValidateQuotedName(GetNameWithoutSchema(viewName));
 
                         if (!mViewNameMap.ContainsKey(nameWithoutSchema))
                         {
@@ -287,17 +287,6 @@ namespace DMSModelConfigDbUpdater
 
             // PostgreSQL quotes names with double quotes
             return '"' + objectName + '"';
-        }
-
-        /// <summary>
-        /// If objectName only has letters, numbers, or underscores, remove the double quotes surrounding it
-        /// </summary>
-        /// <param name="objectName"></param>
-        private string PossiblyUnquote(string objectName)
-        {
-            return mColumnCharNonStandardMatcher.IsMatch(objectName)
-                ? objectName
-                : objectName.Trim('"');
         }
 
         /// <summary>
@@ -800,6 +789,34 @@ namespace DMSModelConfigDbUpdater
             {
                 OnErrorEvent("Error in UpdateListReportPrimaryFilter", ex);
             }
+        }
+
+        /// <summary>
+        /// If objectName only has letters, numbers, or underscores, remove any double quotes
+        /// Otherwise, assure that the name is surrounded by double quotes
+        /// </summary>
+        /// <param name="objectName"></param>
+        private string ValidateQuotedName(string objectName)
+        {
+            var cleanName = objectName.Trim().Trim('"');
+
+            if (!mColumnCharNonStandardMatcher.IsMatch(cleanName))
+                return cleanName;
+
+            var startsWithQuote = objectName.Trim().StartsWith("\"");
+            var endsWithQuote = objectName.Trim().EndsWith("\"");
+
+            // ReSharper disable once ConvertIfStatementToSwitchStatement
+            if (startsWithQuote && endsWithQuote)
+                return objectName;
+
+            if (startsWithQuote)
+                return objectName + "\"";
+
+            if (endsWithQuote)
+                return "\"" + objectName;
+
+            return "\"" + objectName + "\"";
         }
     }
 }
