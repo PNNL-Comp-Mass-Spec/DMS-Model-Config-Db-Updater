@@ -336,7 +336,10 @@ namespace DMSModelConfigDbUpdater
                 }
                 else
                 {
-                    searchPattern = mOptions.FilenameFilter + ".db";
+                    if (mOptions.FilenameFilter.Contains("*"))
+                        searchPattern = mOptions.FilenameFilter + ".db";
+                    else
+                        searchPattern = mOptions.FilenameFilter + "*.db";
                 }
 
                 var filesToProcess = inputDirectory.GetFiles(searchPattern).ToList();
