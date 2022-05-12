@@ -11,7 +11,7 @@ namespace DMSModelConfigDbUpdater
         /// <summary>
         /// Program date
         /// </summary>
-        public const string PROGRAM_DATE = "May 10, 2022";
+        public const string PROGRAM_DATE = "May 11, 2022";
 
         [Option("Input", "I", ArgPosition = 1, HelpShowsDefault = false, IsInputFilePath = false,
             HelpText = "Directory with the DMS model config database files to update\n" +
@@ -19,7 +19,7 @@ namespace DMSModelConfigDbUpdater
         public string InputDirectory { get; set; }
 
         [Option("FilenameFilter", "FileFilter", "F", HelpShowsDefault = false, IsInputFilePath = false,
-            HelpText = "Filter for the model config databases to process, e.g. /F:dataset*.db")]
+            HelpText = "Filter for the model config databases to process, e.g. dataset*.db")]
         public string FilenameFilter { get; set; }
 
         [Option("Map", "M", HelpShowsDefault = false, IsInputFilePath = true,
@@ -58,7 +58,8 @@ namespace DMSModelConfigDbUpdater
 
         [Option("UsePostgresSchema", "UsePgSchema", HelpShowsDefault = true,
             HelpText = "When true, if the object name does not already have a schema and the db_group for the page family is defined, " +
-                       "preface object names with the PostgreSQL schema that applies to the database group")]
+                       "preface object names with the PostgreSQL schema that applies to the database group\n" +
+                       "This should only be set to true if the DMS website is now retrieving data from PostgreSQL and schema names need to be added to page families")]
         public bool UsePostgresSchema { get; set; }
 
         [Option("Verbose", "V", HelpShowsDefault = true,

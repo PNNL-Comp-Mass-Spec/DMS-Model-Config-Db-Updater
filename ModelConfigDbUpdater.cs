@@ -352,6 +352,8 @@ namespace DMSModelConfigDbUpdater
                     return true;
                 }
 
+                Console.WriteLine();
+
                 OnStatusEvent(
                     "Found {0} file{1} matching '{2}' in {3}",
                     filesToProcess.Count,
@@ -447,6 +449,35 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
+        private bool ReadExternalSources(out List<BasicFormField> externalSources)
+        {
+            externalSources = new List<BasicFormField>();
+
+            try
+            {
+                using var dbCommand = mDbConnection.CreateCommand();
+
+                dbCommand.CommandText = "SELECT id, field FROM external_sources";
+
+                using var reader = dbCommand.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    var id = SQLiteUtilities.GetInt32(reader, "id");
+                    var formField = SQLiteUtilities.GetString(reader, "field");
+
+                    externalSources.Add(new BasicFormField(id, formField));
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ReadExternalSources", ex);
+                return false;
+            }
+        }
+
         private bool ReadFormFields(out List<FormFieldInfo> formFields)
         {
             formFields = new List<FormFieldInfo>();
@@ -462,10 +493,10 @@ namespace DMSModelConfigDbUpdater
                 while (reader.Read())
                 {
                     var id = SQLiteUtilities.GetInt32(reader, "id");
-                    var name = SQLiteUtilities.GetString(reader, "name");
+                    var formField = SQLiteUtilities.GetString(reader, "name");
                     var label = SQLiteUtilities.GetString(reader, "label");
 
-                    formFields.Add(new FormFieldInfo(id, name, label));
+                    formFields.Add(new FormFieldInfo(id, formField, label));
                 }
 
                 return true;
@@ -473,6 +504,65 @@ namespace DMSModelConfigDbUpdater
             catch (Exception ex)
             {
                 OnErrorEvent("Error in ReadFormFields", ex);
+                return false;
+            }
+        }
+
+        private bool ReadFormFieldOptions(out List<BasicFormField> formFieldOptions)
+        {
+            formFieldOptions = new List<BasicFormField>();
+
+            try
+            {
+                using var dbCommand = mDbConnection.CreateCommand();
+
+                dbCommand.CommandText = "SELECT id, field FROM form_field_options";
+
+                using var reader = dbCommand.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    var id = SQLiteUtilities.GetInt32(reader, "id");
+                    var formField = SQLiteUtilities.GetString(reader, "field");
+
+                    formFieldOptions.Add(new BasicFormField(id, formField));
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ReadFormFieldOptions", ex);
+                return false;
+            }
+        }
+
+        private bool ReadFormFieldChoosers(out List<FormFieldChooserInfo> formFieldChoosers)
+        {
+            formFieldChoosers = new List<FormFieldChooserInfo>();
+
+            try
+            {
+                using var dbCommand = mDbConnection.CreateCommand();
+
+                dbCommand.CommandText = "SELECT id, field, XRef FROM form_field_choosers";
+
+                using var reader = dbCommand.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    var id = SQLiteUtilities.GetInt32(reader, "id");
+                    var formField = SQLiteUtilities.GetString(reader, "field");
+                    var crossReference = SQLiteUtilities.GetString(reader, "XRef");
+
+                    formFieldChoosers.Add(new FormFieldChooserInfo(id, formField, crossReference));
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ReadFormFieldChoosers", ex);
                 return false;
             }
         }
@@ -509,6 +599,36 @@ namespace DMSModelConfigDbUpdater
             catch (Exception ex)
             {
                 OnErrorEvent("Error in ReadGeneralParams", ex);
+                return false;
+            }
+        }
+
+        private bool ReadStoredProcedureArguments(out List<StoredProcArgumentInfo> storedProcedureArguments)
+        {
+            storedProcedureArguments = new List<StoredProcArgumentInfo>();
+
+            try
+            {
+                using var dbCommand = mDbConnection.CreateCommand();
+
+                dbCommand.CommandText = "SELECT id, field, name FROM sproc_args";
+
+                using var reader = dbCommand.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    var id = SQLiteUtilities.GetInt32(reader, "id");
+                    var formField = SQLiteUtilities.GetString(reader, "field");
+                    var argumentName = SQLiteUtilities.GetString(reader, "name");
+
+                    storedProcedureArguments.Add(new StoredProcArgumentInfo(id, formField, argumentName));
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ReadStoredProcedureArguments", ex);
                 return false;
             }
         }
@@ -623,17 +743,11 @@ namespace DMSModelConfigDbUpdater
 
             if (currentName.Equals(nameToUse))
             {
-                OnStatusEvent("In {0}, {1} is already {2}", mCurrentConfigDB, objectDescription, nameToUse);
+                OnStatusEvent("{0,-25} {1} is already {2}", mCurrentConfigDB + ":", objectDescription, nameToUse);
                 return nameToUse;
             }
 
-            UpdateGeneralParameter(generalParams, parameterType, nameToUse, false);
-
-            // ReSharper disable once ConvertIfStatementToConditionalTernaryExpression
-            if (mOptions.PreviewUpdates)
-                OnStatusEvent("In {0}, would change {1} to {2}", mCurrentConfigDB, objectDescription, nameToUse);
-            else
-                OnStatusEvent("In {0}, changed {1} to {2}", mCurrentConfigDB, objectDescription, nameToUse);
+            UpdateGeneralParameter(generalParams, parameterType, nameToUse);
 
             return nameToUse;
         }
@@ -659,14 +773,23 @@ namespace DMSModelConfigDbUpdater
 
         private bool TryGetColumnMap(string viewName, out Dictionary<string, ColumnNameInfo> columnMap)
         {
-            // ReSharper disable once InvertIf
             if (mViewNameMap.TryGetValue(viewName, out var nameWithSchema))
             {
                 columnMap = mViewColumnNameMap[nameWithSchema];
                 return true;
             }
 
-            return mViewColumnNameMap.TryGetValue(viewName, out columnMap);
+            var viewFound = mViewColumnNameMap.TryGetValue(viewName, out columnMap);
+
+            if (viewFound || mMissingViews.Contains(viewName))
+                return viewFound;
+
+            OnWarningEvent("Cannot check for column rename since view not found in mViewColumnNameMap: " + viewName);
+
+            mMissingViews.Add(viewName);
+
+            return false;
+
         }
 
         private void UpdateDetailReportHotlinks(List<FormFieldInfo> formFields, string detailReportView)
@@ -685,7 +808,133 @@ namespace DMSModelConfigDbUpdater
         {
             try
             {
+                var storedProcedureArgsLoaded = ReadStoredProcedureArguments(out var storedProcedureArguments);
+                if (!storedProcedureArgsLoaded)
+                    return;
 
+                var formFieldsLoaded = ReadFormFieldChoosers(out var formFieldChoosers);
+                if (!formFieldsLoaded)
+                    return;
+
+                var formFieldOptionsLoaded = ReadFormFieldOptions(out var formFieldOptions);
+                if (!formFieldOptionsLoaded)
+                    return;
+
+                var externalSourcesLoaded = ReadExternalSources(out var externalSources);
+                if (!externalSourcesLoaded)
+                    return;
+
+                // Keys are the original form field names, values include the updated info
+                var renamedFormFields = new Dictionary<string, FormFieldInfo>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var formField in formFields)
+                {
+                    if (!ColumnRenamed(entryPageView, formField.FormFieldName, out var columnNameToUse))
+                        continue;
+
+                    formField.NewName = columnNameToUse;
+                    renamedFormFields.Add(formField.FormFieldName, formField);
+                }
+
+                if (mOptions.PreviewUpdates)
+                {
+                    OnStatusEvent(
+                        "{0,-25} Would rename {1} form field{2}", mCurrentConfigDB + ":",
+                        renamedFormFields.Count, renamedFormFields.Count == 1 ? string.Empty : "s");
+
+                    return;
+                }
+
+                using var dbCommand = mDbConnection.CreateCommand();
+
+                foreach (var formField in renamedFormFields.Values)
+                {
+                    dbCommand.CommandText = string.Format(
+                        "UPDATE form_fields SET Name = '{0}' WHERE id = {1}",
+                        formField.NewName, formField.ID);
+
+                    dbCommand.ExecuteNonQuery();
+                }
+
+                OnStatusEvent(
+                    "{0,-25} Renamed {1} form field{2} in 'form_fields'", mCurrentConfigDB + ":",
+                    renamedFormFields.Count, renamedFormFields.Count == 1 ? string.Empty : "s");
+
+                var updatedItems = 0;
+
+                foreach (var procedureArgument in storedProcedureArguments)
+                {
+                    if (!FormFieldRenamed(renamedFormFields, procedureArgument.FormFieldName, out var newFormFieldName))
+                        continue;
+
+                    dbCommand.CommandText = string.Format(
+                        "UPDATE sproc_args SET field = '{0}' WHERE id = {1}",
+                        newFormFieldName, procedureArgument.ID);
+
+                    dbCommand.ExecuteNonQuery();
+                    updatedItems++;
+                }
+
+                OnStatusEvent(
+                    "{0,-25} Renamed {1} form field{2} in 'sproc_args'", mCurrentConfigDB + ":",
+                    updatedItems, updatedItems == 1 ? string.Empty : "s");
+
+                updatedItems = 0;
+
+                foreach (var formFieldChooser in formFieldChoosers)
+                {
+                    if (!FormFieldRenamed(renamedFormFields, formFieldChooser.FormFieldName, out var newFormFieldName))
+                        continue;
+
+                    dbCommand.CommandText = string.Format(
+                        "UPDATE form_field_choosers SET field = '{0}' WHERE id = {1}",
+                        newFormFieldName, formFieldChooser.ID);
+
+                    dbCommand.ExecuteNonQuery();
+                    updatedItems++;
+                }
+
+                OnStatusEvent(
+                    "{0,-25} Renamed {1} form field{2} in 'form_field_choosers'", mCurrentConfigDB + ":",
+                    updatedItems, updatedItems == 1 ? string.Empty : "s");
+
+                updatedItems = 0;
+
+                foreach (var formFieldOption in formFieldOptions)
+                {
+                    if (!FormFieldRenamed(renamedFormFields, formFieldOption.FormFieldName, out var newFormFieldName))
+                        continue;
+
+                    dbCommand.CommandText = string.Format(
+                        "UPDATE form_field_options SET field = '{0}' WHERE id = {1}",
+                        newFormFieldName, formFieldOption.ID);
+
+                    dbCommand.ExecuteNonQuery();
+                    updatedItems++;
+                }
+
+                OnStatusEvent(
+                    "{0,-25} Renamed {1} form field{2} in 'form_field_options'", mCurrentConfigDB + ":",
+                    updatedItems, updatedItems == 1 ? string.Empty : "s");
+
+                updatedItems = 0;
+
+                foreach (var externalSource in externalSources)
+                {
+                    if (!FormFieldRenamed(renamedFormFields, externalSource.FormFieldName, out var newFormFieldName))
+                        continue;
+
+                    dbCommand.CommandText = string.Format(
+                        "UPDATE external_sources SET field = '{0}' WHERE id = {1}",
+                        newFormFieldName, externalSource.ID);
+
+                    dbCommand.ExecuteNonQuery();
+                    updatedItems++;
+                }
+
+                OnStatusEvent(
+                    "{0,-25} Renamed {1} form field{2} in 'external_sources'", mCurrentConfigDB + ":",
+                    updatedItems, updatedItems == 1 ? string.Empty : "s");
             }
             catch (Exception ex)
             {
@@ -702,7 +951,7 @@ namespace DMSModelConfigDbUpdater
             {
                 if (reportUpdate)
                 {
-                    OnStatusEvent("In {0}, {1} is already {2}", mCurrentConfigDB, generalParamsKeyName, newValue);
+                    OnStatusEvent("{0,-25} {1} is already {2}", mCurrentConfigDB + ":", generalParamsKeyName, newValue);
                 }
 
                 return;
@@ -712,7 +961,7 @@ namespace DMSModelConfigDbUpdater
             {
                 if (reportUpdate)
                 {
-                    OnStatusEvent("In {0}, would change {1} from {2} to {3}", mCurrentConfigDB, generalParamsKeyName, currentValue ?? "an empty string", newValue);
+                    OnStatusEvent("{0,-25} Would change {1} from {2} to {3}", mCurrentConfigDB + ":", generalParamsKeyName, currentValue ?? "an empty string", newValue);
                 }
 
                 return;
@@ -730,7 +979,7 @@ namespace DMSModelConfigDbUpdater
 
             if (reportUpdate)
             {
-                OnStatusEvent("In {0}, changed {1} from {2} to {3}", mCurrentConfigDB, generalParamsKeyName, currentValue ?? "an empty string", newValue);
+                OnStatusEvent("{0,-25} Changed {1} from {2} to {3}", mCurrentConfigDB + ":", generalParamsKeyName, currentValue ?? "an empty string", newValue);
             }
         }
 
