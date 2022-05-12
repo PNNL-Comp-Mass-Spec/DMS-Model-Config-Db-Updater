@@ -22,6 +22,11 @@ namespace DMSModelConfigDbUpdater
 
         private SQLiteConnection mDbConnection;
 
+        /// <summary>
+        /// This is used to assure that only a single warning is shown for each missing view
+        /// </summary>
+        private readonly SortedSet<string> mMissingViews = new();
+
         private readonly ModelConfigDbUpdaterOptions mOptions;
 
         /// <summary>
@@ -52,7 +57,7 @@ namespace DMSModelConfigDbUpdater
 
             mCurrentConfigDB = string.Empty;
 
-            mViewColumnNameMap = new Dictionary<string, Dictionary<string, ColumnNameInfo>> (StringComparer.OrdinalIgnoreCase);
+            mViewColumnNameMap = new Dictionary<string, Dictionary<string, ColumnNameInfo>>(StringComparer.OrdinalIgnoreCase);
 
             mViewNameMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -69,7 +74,6 @@ namespace DMSModelConfigDbUpdater
 
             if (!TryGetColumnMap(viewName, out var columnMap))
             {
-                OnWarningEvent("View not found in mViewColumnNameMap: " + viewName);
                 columnNameToUse = currentColumnName;
                 return false;
             }
@@ -81,7 +85,20 @@ namespace DMSModelConfigDbUpdater
             }
 
             columnNameToUse = columnInfo.NewColumnName;
+
             return !currentColumnName.Equals(columnNameToUse);
+        }
+
+        private bool FormFieldRenamed(IReadOnlyDictionary<string, FormFieldInfo> renamedFormFields, string formFieldName, out string newFormFieldName)
+        {
+            if (!renamedFormFields.TryGetValue(formFieldName, out var formFieldInfo))
+            {
+                newFormFieldName = string.Empty;
+                return false;
+            }
+
+            newFormFieldName = formFieldInfo.NewName;
+            return true;
         }
 
         /// <summary>
