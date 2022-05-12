@@ -11,5 +11,12 @@
             Label = label;
             NewName = string.Empty;
         }
+
+        public override string ToString()
+        {
+            return string.IsNullOrWhiteSpace(NewName)
+                ? base.ToString()
+                : string.Format("{0} -> {1}", FormFieldName, NewName);
+        }
     }
 }
