@@ -1,0 +1,90 @@
+View	SourceColumnName	NewColumnName
+"public"."v_dataset_disposition"	Sel.	sel
+"public"."v_dataset_disposition"	LC Cart	lc_cart
+"public"."v_dataset_disposition"	Oper.	oper
+"public"."v_dataset_list_report_2"	Dataset Type	dataset_type
+"public"."v_dataset_list_report_2"	Dataset Folder Path	dataset_folder_path
+"public"."v_dataset_list_report_2"	Archive Folder Path	archive_folder_path
+"public"."v_dataset_list_report_2"	Acq Start	acq_start
+"public"."v_dataset_list_report_2"	Acq. End	acq_end
+"public"."v_dataset_list_report_2"	Acq Length	acq_length
+"public"."v_dataset_list_report_2"	Scan Count	scan_count
+"public"."v_dataset_list_report_2"	File Size MB	file_size_mb
+"public"."v_dataset_list_report_2"	Cart Config	cart_config
+"public"."v_dataset_list_report_2"	LC Column	lc_column
+"public"."v_dataset_list_report_2"	Separation Type	separation_type
+"public"."v_dataset_list_report_2"	EMSL Proposal	emsl_proposal
+"public"."v_dataset_list_report_2"	Work Package	work_package
+"public"."v_dataset_list_report_2"	DateSortKey	date_sort_key
+"public"."v_dataset_load"	Well Number	well_number
+"public"."v_dataset_load"	Secondary Sep	secondary_sep
+"public"."v_dataset_load"	Folder Name	folder_name
+"public"."v_analysis_job"	ParmFileName	parm_file_name
+"public"."v_analysis_job"	SettingsFileName	settings_file_name
+"public"."v_analysis_job"	ParmFileStoragePath	parm_file_storage_path
+"public"."v_analysis_job"	OrganismDBName	organism_dbname
+"public"."v_analysis_job"	ProteinCollectionList	protein_collection_list
+"public"."v_analysis_job"	ProteinOptions	protein_options
+"public"."v_analysis_job"	OrganismDBStoragePath	organism_dbstorage_path
+"public"."v_analysis_job"	StateID	state_id
+"public"."v_analysis_job"	CompState	comp_state
+"public"."v_analysis_job"	InstClass	inst_class
+"public"."v_analysis_job"	DatasetID	dataset_id
+"public"."v_analysis_job"	RequestID	request_id
+"public"."v_analysis_job"	AJ_jobID	job
+"public"."v_analysis_job"	AJ_datasetID	dataset_id
+"public"."v_analysis_job"	SpecialProcessing	special_processing
+"public"."v_analysis_job"	AJ_batchID	batch_id
+"public"."v_analysis_job_detail_report_2"	JobNum	job_num
+"public"."v_analysis_job_detail_report_2"	Dataset Folder	dataset_folder
+"public"."v_analysis_job_detail_report_2"	Dataset Folder Path	dataset_folder_path
+"public"."v_analysis_job_detail_report_2"	MyEMSLState	myemsl_state
+"public"."v_analysis_job_detail_report_2"	Archive Folder Path	archive_folder_path
+"public"."v_analysis_job_detail_report_2"	Tool Name	tool_name
+"public"."v_analysis_job_detail_report_2"	Parm File	parm_file
+"public"."v_analysis_job_detail_report_2"	Parm File Storage Path	parm_file_storage_path
+"public"."v_analysis_job_detail_report_2"	Settings File	settings_file
+"public"."v_analysis_job_detail_report_2"	Experiment Tissue	experiment_tissue
+"public"."v_analysis_job_detail_report_2"	Job Organism	job_organism
+"public"."v_analysis_job_detail_report_2"	Organism DB	organism_db
+"public"."v_analysis_job_detail_report_2"	Organism DB Storage Path	organism_db_storage_path
+"public"."v_analysis_job_detail_report_2"	Protein Collection List	protein_collection_list
+"public"."v_analysis_job_detail_report_2"	Protein Options List	protein_options_list
+"public"."v_analysis_job_detail_report_2"	AJ_StateID	job_state_id
+"public"."v_analysis_job_detail_report_2"	AJS_name	job_state
+"public"."v_analysis_job_detail_report_2"	Runtime Minutes	runtime_minutes
+"public"."v_analysis_job_detail_report_2"	Special Processing	special_processing
+"public"."v_analysis_job_detail_report_2"	AJ_Purged	purged
+"public"."v_analysis_job_detail_report_2"	AJ_resultsFolderName	results_folder_name
+"public"."v_analysis_job_detail_report_2"	Results Folder Path	results_folder_path
+"public"."v_analysis_job_detail_report_2"	AJ_MyEMSLState	myemsl_state
+"public"."v_analysis_job_detail_report_2"	Archive Results Folder Path	archive_results_folder_path
+"public"."v_analysis_job_detail_report_2"	Data Folder Link	data_folder_link
+"public"."v_analysis_job_detail_report_2"	PSM Stats	psm_stats
+"public"."v_analysis_job_detail_report_2"	MTS PT DB Count	mts_pt_db_count
+"public"."v_analysis_job_detail_report_2"	MTS MT DB Count	mts_mt_db_count
+"public"."v_analysis_job_detail_report_2"	Peak Matching Results	peak_matching_results
+"public"."v_analysis_job_detail_report_2"	Assigned Processor	assigned_processor
+"public"."v_analysis_job_detail_report_2"	AM Code	am_code
+"public"."v_analysis_job_detail_report_2"	DEM Code	dem_code
+"public"."v_analysis_job_detail_report_2"	AJ_propagationMode	propagation_mode
+"public"."v_analysis_job_detail_report_2"	Export Mode	export_mode
+"public"."v_analysis_job_detail_report_2"	Dataset Unreviewed	dataset_unreviewed
+"public"."v_analysis_job_detail_report_2"	MyEMSL State	myemsl_state
+"public"."v_analysis_job_detail_report_2"	Processor Group	processor_group
+"public"."v_analysis_job_entry"	AJ_priority	priority
+"public"."v_analysis_job_entry"	AJ_ToolName	aj_tool_name
+"public"."v_analysis_job_entry"	AJ_ParmFile	aj_parm_file
+"public"."v_analysis_job_entry"	AJ_SettingsFile	aj_settings_file
+"public"."v_analysis_job_entry"	AJ_OrganismDB	aj_organism_db
+"public"."v_analysis_job_entry"	AJ_owner	owner
+"public"."v_analysis_job_entry"	AJ_comment	comment
+"public"."v_analysis_job_entry"	AJ_specialProcessing	special_processing
+"public"."v_analysis_job_entry"	AJ_batchID	batch_id
+"public"."v_analysis_job_entry"	AJ_assignedProcessorName	assigned_processor_name
+"public"."v_analysis_job_entry"	protCollNameList	prot_coll_name_list
+"public"."v_analysis_job_entry"	protCollOptionsList	prot_coll_options_list
+"public"."v_analysis_job_entry"	stateName	state_name
+"public"."v_analysis_job_entry"	AJ_propagationMode	propagation_mode
+"public"."v_analysis_job_entry"	propagationMode	propagation_mode
+"public"."v_analysis_job_entry"	associatedProcessorGroup	associated_processor_group
