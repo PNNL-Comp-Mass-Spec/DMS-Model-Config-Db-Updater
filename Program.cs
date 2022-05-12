@@ -65,6 +65,23 @@ namespace DMSModelConfigDbUpdater
                     return -1;
                 }
 
+                if (options.InputDirectory.Trim().Equals(".") && !string.IsNullOrWhiteSpace(parser.ParameterFilePath))
+                {
+                    // Set the input directory to the directory with the parameter file
+                    var parameterFile = new FileInfo(parser.ParameterFilePath);
+
+                    if (parameterFile.Directory == null)
+                    {
+                        Processor_WarningEvent(
+                            "Cannot determine the input directory; unable to determine the parent directory of the parameter file: " +
+                            parser.ParameterFilePath);
+
+                        return -1;
+                    }
+
+                    options.InputDirectory = parameterFile.Directory.FullName;
+                }
+
                 options.OutputSetOptions();
             }
             catch (Exception e)
