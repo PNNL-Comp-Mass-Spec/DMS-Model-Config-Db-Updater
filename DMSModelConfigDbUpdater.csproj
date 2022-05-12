@@ -51,6 +51,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ColumnNameInfo.cs" />
+    <Compile Include="BasicFormField.cs" />
     <Compile Include="FormFieldInfo.cs" />
     <Compile Include="GeneralParameters.cs" />
     <Compile Include="ModelConfigDbUpdater.cs" />

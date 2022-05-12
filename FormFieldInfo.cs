@@ -1,19 +1,13 @@
 ﻿namespace DMSModelConfigDbUpdater
 {
-    internal class FormFieldInfo
+    internal class FormFieldInfo : BasicFormField
     {
-        public int ID { get; }
-
-        public string Name { get; }
-
         public string Label { get; }
 
         public string NewName { get; set; }
 
-        public FormFieldInfo(int id, string name, string label)
+        public FormFieldInfo(int id, string formFieldName, string label) : base (id, formFieldName)
         {
-            ID = id;
-            Name = name;
             Label = label;
             NewName = string.Empty;
         }
