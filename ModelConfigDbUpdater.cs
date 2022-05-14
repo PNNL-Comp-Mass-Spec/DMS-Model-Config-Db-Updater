@@ -325,7 +325,7 @@ namespace DMSModelConfigDbUpdater
 
                     if (renamedColumns.ContainsKey(sourceColumnName))
                     {
-                        // The view column name map file has duplicate rows; only keep the first occurrence of each column
+                        // The view column map file has duplicate rows; only keep the first occurrence of each column
                         continue;
                     }
 
@@ -879,7 +879,6 @@ namespace DMSModelConfigDbUpdater
             mMissingViews.Add(viewName);
 
             return false;
-
         }
 
         private void UpdateDetailReportHotlinks(List<FormFieldInfo> formFields, string detailReportView)
