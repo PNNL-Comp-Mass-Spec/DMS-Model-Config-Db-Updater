@@ -71,10 +71,6 @@ namespace DMSModelConfigDbUpdater
                        "This should only be set to true if the DMS website is now retrieving data from PostgreSQL and schema names need to be added to page families")]
         public bool UsePostgresSchema { get; set; }
 
-        [Option("Verbose", "V", HelpShowsDefault = true,
-            HelpText = "When true, display the old and new version of each updated line")]
-        public bool VerboseOutput { get; set; }
-
         /// <summary>
         /// Constructor
         /// </summary>
@@ -130,8 +126,6 @@ namespace DMSModelConfigDbUpdater
             Console.WriteLine(" {0,-40} {1}", "Rename Entry Page View and Columns:", RenameEntryPageViewAndColumns);
 
             Console.WriteLine(" {0,-40} {1}", "Rename Stored Procedures:", RenameStoredProcedures);
-
-            Console.WriteLine(" {0,-40} {1}", "Verbose output:", VerboseOutput);
 
             Console.WriteLine();
         }
