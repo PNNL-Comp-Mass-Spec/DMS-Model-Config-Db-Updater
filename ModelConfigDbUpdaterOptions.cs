@@ -22,6 +22,12 @@ namespace DMSModelConfigDbUpdater
             HelpText = "Filter for the model config databases to process, e.g. dataset*.db")]
         public string FilenameFilter { get; set; }
 
+        [Option("OutputDirectory", "Output", HelpShowsDefault = false, IsInputFilePath = false,
+            HelpText = "Directory to write updated files\n" +
+                       "Treated as a path relative to the input files if not rooted\n" +
+                       "If an empty string, updates files in-place\n")]
+        public string OutputDirectory { get; set; }
+
         [Option("Map", "M", HelpShowsDefault = false, IsInputFilePath = true,
             HelpText = "View column map file (typically created by PgSqlViewCreatorHelper.exe)\n" +
                        "Tab-delimited file with four columns:\n" +
@@ -73,6 +79,7 @@ namespace DMSModelConfigDbUpdater
         {
             InputDirectory = string.Empty;
             FilenameFilter = string.Empty;
+            OutputDirectory = string.Empty;
             ViewColumnMapFile = string.Empty;
             TableNameMapFile = string.Empty;
         }
@@ -98,6 +105,11 @@ namespace DMSModelConfigDbUpdater
             {
                 Console.WriteLine(" {0,-30} {1}", "Filename Filter:", FilenameFilter);
             }
+
+            Console.WriteLine(" {0,-30} {1}", "Output Directory:",
+                string.IsNullOrWhiteSpace(OutputDirectory)
+                    ? "n/a: updating files in-place"
+                    : PathUtils.CompactPathString(OutputDirectory, 80));
 
             Console.WriteLine(" {0,-30} {1}", "View Column Map File:", PathUtils.CompactPathString(ViewColumnMapFile, 80));
 
