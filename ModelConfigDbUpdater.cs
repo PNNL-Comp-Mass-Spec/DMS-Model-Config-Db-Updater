@@ -20,7 +20,9 @@ namespace DMSModelConfigDbUpdater
 
         private string mCurrentConfigDB;
 
-        private SQLiteConnection mDbConnection;
+        private SQLiteConnection mDbConnectionReader;
+
+        private SQLiteConnection mDbConnectionWriter;
 
         /// <summary>
         /// This is used to assure that only a single warning is shown for each missing view
@@ -124,6 +126,73 @@ namespace DMSModelConfigDbUpdater
                 return objectName.Substring(periodIndex + 1);
 
             return objectName;
+        }
+
+        private bool InitializeWriter(FileInfo modelConfigDb)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(mOptions.OutputDirectory))
+                {
+                    // Update files in-place
+                    mDbConnectionWriter = mDbConnectionReader;
+                    return true;
+                }
+
+                if (modelConfigDb.Directory == null)
+                {
+                    OnErrorEvent("Unable to determine the parent directory of SQLite DB " + PathUtils.CompactPathString(modelConfigDb.FullName, 80));
+                    return false;
+                }
+
+                var targetDirectoryPath = Path.IsPathRooted(mOptions.OutputDirectory)
+                    ? mOptions.OutputDirectory
+                    : Path.Combine(modelConfigDb.Directory.FullName, mOptions.OutputDirectory);
+
+                if (targetDirectoryPath.Equals(modelConfigDb.Directory.FullName, StringComparison.OrdinalIgnoreCase))
+                {
+                    OnErrorEvent(
+                        "The output directory is the same as the input directory; " +
+                        "either set the output directory to an empty string to update files in-place " +
+                        "or specify a different output directory");
+
+                    return false;
+                }
+
+                var targetFilePath = Path.Combine(targetDirectoryPath, modelConfigDb.Name);
+
+                // Create the target directory if missing
+                var targetDirectory = new DirectoryInfo(targetDirectoryPath);
+
+                if (!targetDirectory.Exists)
+                    targetDirectory.Create();
+
+                // Copy the source file to the target file
+                modelConfigDb.CopyTo(targetFilePath, true);
+
+                var connectionString = "Data Source=" + targetFilePath + "; Version=3; DateTimeFormat=Ticks; Read Only=False;";
+
+                // When calling the constructor, optionally set parseViaFramework to true if reading SqLite files located on a network share or in read-only folders
+                mDbConnectionWriter = new SQLiteConnection(connectionString, true);
+
+                try
+                {
+                    mDbConnectionWriter.Open();
+                }
+                catch (Exception ex)
+                {
+                    OnErrorEvent("Error opening SQLite database " + modelConfigDb.Name, ex);
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in InitializeWriter", ex);
+                mCurrentConfigDB = string.Empty;
+                return false;
+            }
         }
 
         private bool LoadNameMapFiles()
@@ -385,20 +454,20 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        private bool ProcessFile(FileSystemInfo modelConfigDb)
+        private bool ProcessFile(FileInfo modelConfigDb)
         {
             try
             {
                 var connectionString = "Data Source=" + modelConfigDb.FullName + "; Version=3; DateTimeFormat=Ticks; Read Only=False;";
 
                 // When calling the constructor, optionally set parseViaFramework to true if reading SqLite files located on a network share or in read-only folders
-                mDbConnection = new SQLiteConnection(connectionString, true);
+                mDbConnectionReader = new SQLiteConnection(connectionString, true);
 
                 mCurrentConfigDB = modelConfigDb.Name;
 
                 try
                 {
-                    mDbConnection.Open();
+                    mDbConnectionReader.Open();
                 }
                 catch (Exception ex)
                 {
@@ -414,6 +483,9 @@ namespace DMSModelConfigDbUpdater
                 var formFieldsLoaded = ReadFormFields(out var formFields);
 
                 if (!formFieldsLoaded)
+                    return false;
+
+                if (!mOptions.PreviewUpdates && !InitializeWriter(modelConfigDb))
                     return false;
 
                 if (mOptions.RenameEntryPageViewAndColumns)
@@ -461,7 +533,7 @@ namespace DMSModelConfigDbUpdater
 
             try
             {
-                using var dbCommand = mDbConnection.CreateCommand();
+                using var dbCommand = mDbConnectionReader.CreateCommand();
 
                 dbCommand.CommandText = "SELECT id, field FROM external_sources";
 
@@ -490,7 +562,7 @@ namespace DMSModelConfigDbUpdater
 
             try
             {
-                using var dbCommand = mDbConnection.CreateCommand();
+                using var dbCommand = mDbConnectionReader.CreateCommand();
 
                 dbCommand.CommandText = "SELECT id, name, label FROM form_fields";
 
@@ -520,7 +592,7 @@ namespace DMSModelConfigDbUpdater
 
             try
             {
-                using var dbCommand = mDbConnection.CreateCommand();
+                using var dbCommand = mDbConnectionReader.CreateCommand();
 
                 dbCommand.CommandText = "SELECT id, field FROM form_field_options";
 
@@ -549,7 +621,7 @@ namespace DMSModelConfigDbUpdater
 
             try
             {
-                using var dbCommand = mDbConnection.CreateCommand();
+                using var dbCommand = mDbConnectionReader.CreateCommand();
 
                 dbCommand.CommandText = "SELECT id, field, XRef FROM form_field_choosers";
 
@@ -579,7 +651,7 @@ namespace DMSModelConfigDbUpdater
 
             try
             {
-                using var dbCommand = mDbConnection.CreateCommand();
+                using var dbCommand = mDbConnectionReader.CreateCommand();
 
                 dbCommand.CommandText = "SELECT name, value FROM general_params";
 
@@ -615,7 +687,7 @@ namespace DMSModelConfigDbUpdater
 
             try
             {
-                using var dbCommand = mDbConnection.CreateCommand();
+                using var dbCommand = mDbConnectionReader.CreateCommand();
 
                 dbCommand.CommandText = "SELECT id, field, name FROM sproc_args";
 
@@ -851,7 +923,7 @@ namespace DMSModelConfigDbUpdater
                     return;
                 }
 
-                using var dbCommand = mDbConnection.CreateCommand();
+                using var dbCommand = mDbConnectionWriter.CreateCommand();
 
                 foreach (var formField in renamedFormFields.Values)
                 {
@@ -974,7 +1046,7 @@ namespace DMSModelConfigDbUpdater
             }
 
             // Update the database
-            using var dbCommand = mDbConnection.CreateCommand();
+            using var dbCommand = mDbConnectionWriter.CreateCommand();
 
             dbCommand.CommandText = string.Format("UPDATE general_params set value = '{0}' WHERE name = '{1}'", newValue, generalParamsKeyName);
 
