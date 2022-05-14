@@ -961,14 +961,32 @@ namespace DMSModelConfigDbUpdater
 
                 foreach (var formFieldChooser in formFieldChoosers)
                 {
-                    if (!FormFieldRenamed(renamedFormFields, formFieldChooser.FormFieldName, out var newFormFieldName))
+                    var fieldRenamed = FormFieldRenamed(renamedFormFields, formFieldChooser.FormFieldName, out var newFormFieldName);
+
+                    var crossReferenceRenamed = FormFieldRenamed(renamedFormFields, formFieldChooser.CrossReference, out var newCrossReferenceFieldName);
+
+                    // ReSharper disable once ConvertIfStatementToSwitchStatement
+                    if (!fieldRenamed && !crossReferenceRenamed)
                         continue;
 
-                    dbCommand.CommandText = string.Format(
-                        "UPDATE form_field_choosers SET field = '{0}' WHERE id = {1}",
-                        newFormFieldName, formFieldChooser.ID);
+                    if (fieldRenamed)
+                    {
+                        dbCommand.CommandText = string.Format(
+                            "UPDATE form_field_choosers SET field = '{0}' WHERE id = {1}",
+                            newFormFieldName, formFieldChooser.ID);
 
-                    dbCommand.ExecuteNonQuery();
+                        dbCommand.ExecuteNonQuery();
+                    }
+
+                    if (crossReferenceRenamed)
+                    {
+                        dbCommand.CommandText = string.Format(
+                            "UPDATE form_field_choosers SET XRef = '{0}' WHERE id = {1}",
+                            newCrossReferenceFieldName, formFieldChooser.ID);
+
+                        dbCommand.ExecuteNonQuery();
+                    }
+
                     updatedItems++;
                 }
 
