@@ -26,13 +26,13 @@ namespace DMSModelConfigDbUpdater
         [Option("OutputDirectory", "Output", "O", HelpShowsDefault = false, IsInputFilePath = false,
             HelpText = "Directory to write updated files\n" +
                        "Treated as a path relative to the input files if not rooted\n" +
-                       "If an empty string, updates files in-place\n")]
+                       "If an empty string, updates files in-place")]
         public string OutputDirectory { get; set; }
 
         [Option("ViewColumnMap", "Map", "M", HelpShowsDefault = false, IsInputFilePath = true,
             HelpText = "View column map file (typically created by PgSqlViewCreatorHelper.exe)\n" +
-                       "Tab-delimited file with four columns:\n" +
-                       "View  SourceColumnName  NewColumnName  IsColumnAlias")]
+                       "Tab-delimited file with three columns:\n" +
+                       "View  SourceColumnName  NewColumnName")]
         public string ViewColumnMapFile { get; set; }
 
         [Option("TableNameMap", "TableNames", HelpShowsDefault = false, IsInputFilePath = true,
