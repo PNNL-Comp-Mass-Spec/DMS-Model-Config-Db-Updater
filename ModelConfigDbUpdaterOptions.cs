@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Reflection;
 using PRISM;
 
@@ -137,7 +138,7 @@ namespace DMSModelConfigDbUpdater
         /// Validate the options
         /// </summary>
         /// <returns>True if options are valid, false if /I or /M is missing</returns>
-        public bool ValidateArgs(out string errorMessage)
+        public bool ValidateArgs(string parameterFilePath, out string errorMessage)
         {
             if (string.IsNullOrWhiteSpace(InputDirectory))
             {
@@ -149,6 +150,26 @@ namespace DMSModelConfigDbUpdater
             {
                 errorMessage = "Use /M to specify the view column map file";
                 return false;
+            }
+
+            if (InputDirectory.Trim().Equals(".") && !string.IsNullOrWhiteSpace(parameterFilePath))
+            {
+                // Set the input directory to the directory with the parameter file
+                var parameterFile = new FileInfo(parameterFilePath);
+
+                if (parameterFile.Directory == null)
+                {
+                    errorMessage = "Cannot determine the input directory; unable to determine the parent directory of the parameter file: " + parameterFilePath;
+                    return false;
+                }
+
+                InputDirectory = parameterFile.Directory.FullName;
+            }
+
+            if (!string.IsNullOrWhiteSpace(OutputDirectory) && !Path.IsPathRooted(OutputDirectory))
+            {
+                var inputDirectory = new DirectoryInfo(InputDirectory);
+                OutputDirectory = Path.Combine(inputDirectory.FullName, OutputDirectory);
             }
 
             errorMessage = string.Empty;
