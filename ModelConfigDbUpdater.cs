@@ -815,7 +815,19 @@ namespace DMSModelConfigDbUpdater
             if (string.IsNullOrWhiteSpace(generalParams.Parameters[parameterType]))
                 return string.Empty;
 
-            var updatedName = NameUpdater.ConvertNameToSnakeCase(currentName);
+            string updatedName;
+
+            // ReSharper disable once ConvertIfStatementToConditionalTernaryExpression
+            if (mViewNameMap.TryGetValue(currentName, out var nameFromNameMap))
+            {
+                // Renamed view found in the loaded name map data
+                updatedName = nameFromNameMap;
+            }
+            else
+            {
+                // Snake case the name since Perl script sqlserver2pgsql.pl renames all views to snake case
+                updatedName = NameUpdater.ConvertNameToSnakeCase(currentName);
+            }
 
             var nameToUse = PossiblyAddSchema(generalParams, updatedName);
 
