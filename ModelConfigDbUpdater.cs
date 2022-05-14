@@ -91,6 +91,12 @@ namespace DMSModelConfigDbUpdater
 
         private bool FormFieldRenamed(IReadOnlyDictionary<string, FormFieldInfo> renamedFormFields, string formFieldName, out string newFormFieldName)
         {
+            if (string.IsNullOrWhiteSpace(formFieldName))
+            {
+                newFormFieldName = string.Empty;
+                return false;
+            }
+
             if (!renamedFormFields.TryGetValue(formFieldName, out var formFieldInfo))
             {
                 newFormFieldName = string.Empty;
