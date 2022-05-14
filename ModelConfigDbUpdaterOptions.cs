@@ -12,9 +12,9 @@ namespace DMSModelConfigDbUpdater
         /// <summary>
         /// Program date
         /// </summary>
-        public const string PROGRAM_DATE = "May 11, 2022";
+        public const string PROGRAM_DATE = "May 13, 2022";
 
-        [Option("Input", "I", ArgPosition = 1, HelpShowsDefault = false, IsInputFilePath = false,
+        [Option("InputDirectory", "Input", "I", ArgPosition = 1, HelpShowsDefault = false, IsInputFilePath = false,
             HelpText = "Directory with the DMS model config database files to update\n" +
                        "The SQLite files should have the extension .db")]
         public string InputDirectory { get; set; }
