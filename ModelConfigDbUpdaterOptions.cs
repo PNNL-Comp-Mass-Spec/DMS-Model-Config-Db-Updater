@@ -23,13 +23,13 @@ namespace DMSModelConfigDbUpdater
             HelpText = "Filter for the model config databases to process, e.g. dataset*.db")]
         public string FilenameFilter { get; set; }
 
-        [Option("OutputDirectory", "Output", HelpShowsDefault = false, IsInputFilePath = false,
+        [Option("OutputDirectory", "Output", "O", HelpShowsDefault = false, IsInputFilePath = false,
             HelpText = "Directory to write updated files\n" +
                        "Treated as a path relative to the input files if not rooted\n" +
                        "If an empty string, updates files in-place\n")]
         public string OutputDirectory { get; set; }
 
-        [Option("Map", "M", HelpShowsDefault = false, IsInputFilePath = true,
+        [Option("ViewColumnMap", "Map", "M", HelpShowsDefault = false, IsInputFilePath = true,
             HelpText = "View column map file (typically created by PgSqlViewCreatorHelper.exe)\n" +
                        "Tab-delimited file with four columns:\n" +
                        "View  SourceColumnName  NewColumnName  IsColumnAlias")]
@@ -43,11 +43,13 @@ namespace DMSModelConfigDbUpdater
         public string TableNameMapFile { get; set; }
 
         [Option("PreviewUpdates", "Preview", HelpShowsDefault = true,
-            HelpText = "When true, show changes that would be made")]
+            HelpText = "When true, show changes that would be made, but do not update any files")]
         public bool PreviewUpdates { get; set; }
 
         [Option("RenameListReportView", "RenameList", HelpShowsDefault = true,
-            HelpText = "When true, rename the list report view and columns")]
+            HelpText = "When true, rename the list report view and columns\n" +
+                       "View renames will either be based on data loaded from the table name map file, or by converting to snake case\n" +
+                       "Column renames are based on data loaded from the view column map file")]
         public bool RenameListReportViewAndColumns { get; set; }
 
         [Option("RenameDetailReportView", "RenameDetail", HelpShowsDefault = true,
@@ -56,7 +58,7 @@ namespace DMSModelConfigDbUpdater
 
         [Option("RenameEntryPageView", "RenameEntry", HelpShowsDefault = true,
             HelpText = "When true, rename the entry page view and columns\n" +
-                       "This also updates field names in the model config DB tables, since field names match the entry page view's column names")]
+                       "This also updates form field names in the model config DB tables, since form fields match the entry page view's column names")]
         public bool RenameEntryPageViewAndColumns { get; set; }
 
         [Option("RenameStoredProcedures", "RenameSPs", HelpShowsDefault = true,
