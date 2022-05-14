@@ -2,8 +2,9 @@
 
 This program updates column names in the SQLite files used by the DMS website to
 retrieve data from the DMS database and display it for users. It reads information 
-about renamed columns from a tab-delimited text file and looks through the SQLite files 
-for references to the parent views, updating the names of any renamed columns.
+about renamed columns and views from tab-delimited text files and looks through 
+the SQLite files for references to the parent views, updating the names of any 
+renamed columns. View names are also updated.
 
 ## Console Switches
 
@@ -13,9 +14,12 @@ The DMS Model Config DB Updater is a console application, and must be run from t
 DMSModelConfigDbUpdater.exe
   /I:InputDirectoryPath
   /F:FilenameFilter
+  /O:OutputDirectory
   /Map:ViewColumnMapFile
   [/TableNameMap:TableNameMapFile]
-  [/V]
+  [/Preview]
+  [/RenameList] [/RenameDetail] [/RenameEntry] [/RenameSPs]
+  [/UsePgSchema]
   [/ParamFile:ParamFileName.conf] [/CreateParamFile]
 ```
 
@@ -25,22 +29,26 @@ The input directory should have the DMS model config database files to update
 Optionally use `/F` to filter the filenames to process
 * For example, `/F:dataset*.db`
 
-The `/Map` file is is a tab-delimited text file with four columns
+Optionally use `/O` to specify the output directory for writing updated SQLite files
+* If the directory is not rooted (e.g. starts with C:), this is treated as a path relative to the input files 
+* If the output directory is not defined, SQLite files will be updated in-place
+
+The `/Map` file is is a tab-delimited text file with three columns
 * The Map file matches the format of the renamed column file created by the PgSql View Creator Helper (PgSqlViewCreatorHelper.exe)
 * Example data:
 
-| View                               | SourceColumnName | NewColumnName | IsColumnAlias |
-|------------------------------------|------------------|---------------|---------------|
-| "public"."v_analysis_job_entry"    | AJ_jobID         | job           | False         |
-| "public"."v_analysis_job_entry"    | AJ_priority      | priority      | False         |
-| "public"."v_analysis_job_entry"    | AJ_ToolName      | aj_tool_name  | True          |
-| "public"."v_analysis_job_entry"    | AJ_ParmFile      | aj_parm_file  | True          |
-| "public"."v_analysis_job_entry"    | AJ_batchID       | batch_id      | False         |
-| "public"."v_analysis_job_entry"    | Job_ID           | job           | False         |
-| "public"."v_dataset_list_report_2" | ID               | dataset_id    | False         |
-| "public"."v_dataset_list_report_2" | Dataset_Num      | dataset       | False         |
-| "public"."v_dataset_list_report_2" | Experiment_Num   | experiment    | False         |
-| "public"."v_dataset_list_report_2" | Campaign_Num     | campaign      | False         |
+| View                               | SourceColumnName | NewColumnName |
+|------------------------------------|------------------|---------------|
+| "public"."v_analysis_job_entry"    | AJ_jobID         | job           |
+| "public"."v_analysis_job_entry"    | AJ_priority      | priority      |
+| "public"."v_analysis_job_entry"    | AJ_ToolName      | aj_tool_name  |
+| "public"."v_analysis_job_entry"    | AJ_ParmFile      | aj_parm_file  |
+| "public"."v_analysis_job_entry"    | AJ_batchID       | batch_id      |
+| "public"."v_analysis_job_entry"    | Job_ID           | job           |
+| "public"."v_dataset_list_report_2" | ID               | dataset_id    |
+| "public"."v_dataset_list_report_2" | Dataset_Num      | dataset       |
+| "public"."v_dataset_list_report_2" | Experiment_Num   | experiment    |
+| "public"."v_dataset_list_report_2" | Campaign_Num     | campaign      |
 
 
 Use `/TableNameMap` (or `/TableNames`) to optionally specify a tab-delimited text file listing old and new names for renamed tables and views
@@ -63,7 +71,21 @@ Use `/TableNameMap` (or `/TableNames`) to optionally specify a tab-delimited tex
 | V_MyEMSL_Main_Metadata    | public           | v_myemsl_main_metadata   |           |                   |
 
 
-Use `/V` to enable verbose mode, displaying the old and new version of each updated line
+Use `/Preview` to show changes that would be made, but do not update any files
+
+Use `/RenameList` to rename the list report view and columns
+
+Use `/RenameDetail` to rename the detail report view and columns
+
+Use `/RenameEntry` to rename the entry page view and columns
+* This also updates form field names in the model config DB tables, since form fields match the entry page view's column names
+
+Use `/RenameSPs` to rename the referenced stored procedures to use snake case
+* This does not change argument names
+
+When `/UsePgSchema` is provided, if the object name does not already have a schema and the db_group for the page family is defined,
+preface object names with the PostgreSQL schema that applies to the database group
+* This should only be set to true if the DMS website is now retrieving data from PostgreSQL and schema names need to be added to page families
 
 The processing options can be specified in a parameter file using `/ParamFile:Options.conf` or `/Conf:Options.conf`
 * Define options using the format `ArgumentName=Value`
