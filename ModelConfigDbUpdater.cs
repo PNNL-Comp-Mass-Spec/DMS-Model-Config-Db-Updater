@@ -381,7 +381,23 @@ namespace DMSModelConfigDbUpdater
 
         private string PossiblyAddSchema(GeneralParameters generalParams, string objectName)
         {
-            if (!mOptions.UsePostgresSchema || objectName.Contains("."))
+            if (!mOptions.UsePostgresSchema)
+            {
+                if (objectName.StartsWith("\"public\""))
+                {
+                    return objectName.Substring(9).Trim('"');
+                }
+
+                // ReSharper disable once ConvertIfStatementToReturnStatement
+                if (objectName.StartsWith("public."))
+                {
+                    return objectName.Substring(8);
+                }
+
+                return objectName;
+            }
+
+            if (objectName.Contains("."))
                 return objectName;
 
             return generalParams.Parameters[GeneralParameters.ParameterType.DatabaseGroup].ToLower() switch
