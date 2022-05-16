@@ -419,6 +419,12 @@ namespace DMSModelConfigDbUpdater
         /// <param name="alwaysQuoteNames"></param>
         protected string PossiblyQuoteName(string objectName, bool quoteWithSquareBrackets = false, bool alwaysQuoteNames = false)
         {
+            if (objectName.StartsWith("'") && objectName.EndsWith("'"))
+            {
+                // Literal string; leave as-is
+                return objectName;
+            }
+
             if (!alwaysQuoteNames &&
                 !mColumnCharNonStandardMatcher.Match(objectName).Success)
             {
