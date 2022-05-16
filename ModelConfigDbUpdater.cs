@@ -518,6 +518,9 @@ namespace DMSModelConfigDbUpdater
         {
             try
             {
+                Console.WriteLine();
+                Console.WriteLine("Processing " + PathUtils.CompactPathString(modelConfigDb.FullName, 80));
+
                 var connectionString = "Data Source=" + modelConfigDb.FullName + "; Version=3; DateTimeFormat=Ticks; Read Only=False;";
 
                 // When calling the constructor, optionally set parseViaFramework to true if reading SqLite files located on a network share or in read-only folders
@@ -959,7 +962,11 @@ namespace DMSModelConfigDbUpdater
             if (viewFound || mMissingViews.Contains(viewName))
                 return viewFound;
 
-            OnWarningEvent("Cannot check for column rename since view not found in mViewColumnNameMap: " + viewName);
+            OnWarningEvent(
+                "Cannot check for explicit column renames since view not found in mViewColumnNameMap: {0}\n" +
+                "Form fields will be auto-converted to lowercase snake case", viewName);
+
+            Console.WriteLine();
 
             mMissingViews.Add(viewName);
 
