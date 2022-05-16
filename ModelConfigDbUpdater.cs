@@ -911,7 +911,7 @@ namespace DMSModelConfigDbUpdater
             else
             {
                 // Snake case the name since Perl script sqlserver2pgsql.pl renames all views to snake case
-                updatedName = NameUpdater.ConvertNameToSnakeCase(currentName);
+                updatedName = ConvertToSnakeCaseAndUpdatePrefix(currentName);
             }
 
             var nameToUse = PossiblyAddSchema(generalParams, updatedName);
