@@ -1144,11 +1144,15 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        private void UpdateListReportDataColumns(GeneralParameters generalParams)
+        private void UpdateListOfDataColumns(
+            GeneralParameters generalParams,
+            GeneralParameters.ParameterType parameterType,
+            GeneralParameters.ParameterType viewType,
+            bool snakeCaseNames)
         {
             try
             {
-                var columnList = generalParams.Parameters[GeneralParameters.ParameterType.ListReportDataColumns].Split(',');
+                var columnList = generalParams.Parameters[parameterType].Split(',');
 
                 var updatedColumns = new List<string>();
 
@@ -1160,36 +1164,59 @@ namespace DMSModelConfigDbUpdater
 
                     if (asIndex > 0)
                     {
-                        columnNameToFind = TrimQuotes(currentColumn.Substring(0, asIndex));
-                        aliasName = currentColumn.Substring(asIndex);
+                        columnNameToFind = TrimQuotes(currentColumn.Substring(0, asIndex)).Trim();
+                        aliasName = currentColumn.Substring(asIndex + 4).Trim();
                     }
                     else
                     {
-                        columnNameToFind = TrimQuotes(currentColumn);
+                        columnNameToFind = TrimQuotes(currentColumn).Trim();
                         aliasName = string.Empty;
                     }
 
-                    if (ColumnRenamed(generalParams.Parameters[GeneralParameters.ParameterType.ListReportView], columnNameToFind, out var newColumnName))
+                    string aliasNameToUse;
+
+                    if (viewType == GeneralParameters.ParameterType.EntryPageView)
                     {
-                        if (string.IsNullOrWhiteSpace(aliasName))
+                        // See if the column alias needs to be updated
+                        if (ColumnRenamed(generalParams.Parameters[viewType], aliasName, out var newAliasName, snakeCaseNames))
                         {
-                            updatedColumns.Add(PossiblyQuoteName(newColumnName));
+                            aliasNameToUse = newAliasName;
                         }
                         else
                         {
-                            var nameWithAlias = PossiblyQuoteName(newColumnName) + aliasName;
-                            updatedColumns.Add(nameWithAlias);
+                            aliasNameToUse = aliasName;
                         }
                     }
                     else
                     {
-                        updatedColumns.Add(currentColumn);
+                        aliasNameToUse = string.Empty;
+                    }
+
+                    string columnNameToUse;
+
+                    if (ColumnRenamed(generalParams.Parameters[viewType], columnNameToFind, out var newColumnName, snakeCaseNames))
+                    {
+                        columnNameToUse = newColumnName;
+                    }
+                    else
+                    {
+                        columnNameToUse = columnNameToFind;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(aliasNameToUse))
+                    {
+                        updatedColumns.Add(PossiblyQuoteName(columnNameToUse));
+                    }
+                    else
+                    {
+                        var nameWithAlias = PossiblyQuoteName(columnNameToUse) + " AS " + aliasNameToUse;
+                        updatedColumns.Add(nameWithAlias);
                     }
                 }
 
                 var updatedColumnList = string.Join(", ", updatedColumns);
 
-                UpdateGeneralParameter(generalParams, GeneralParameters.ParameterType.ListReportDataColumns, updatedColumnList);
+                UpdateGeneralParameter(generalParams, parameterType, updatedColumnList);
             }
             catch (Exception ex)
             {
