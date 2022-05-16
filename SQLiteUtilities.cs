@@ -75,7 +75,7 @@ namespace DMSModelConfigDbUpdater
         /// <param name="dbConnection"></param>
         /// <param name="tableName"></param>
         /// <returns>True if the table or view exists</returns>
-        public bool TableExists(SQLiteConnection dbConnection, string tableName)
+        public static bool TableExists(SQLiteConnection dbConnection, string tableName)
         {
             using var cmd = new SQLiteCommand(dbConnection)
             {

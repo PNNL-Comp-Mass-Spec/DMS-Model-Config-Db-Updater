@@ -533,6 +533,9 @@ namespace DMSModelConfigDbUpdater
 
             try
             {
+                if (!SQLiteUtilities.TableExists(mDbConnectionReader, "external_sources"))
+                    return true;
+
                 using var dbCommand = mDbConnectionReader.CreateCommand();
 
                 dbCommand.CommandText = "SELECT id, field FROM external_sources";
@@ -562,6 +565,9 @@ namespace DMSModelConfigDbUpdater
 
             try
             {
+                if (!SQLiteUtilities.TableExists(mDbConnectionReader, "form_fields"))
+                    return true;
+
                 using var dbCommand = mDbConnectionReader.CreateCommand();
 
                 dbCommand.CommandText = "SELECT id, name, label FROM form_fields";
@@ -592,6 +598,9 @@ namespace DMSModelConfigDbUpdater
 
             try
             {
+                if (!SQLiteUtilities.TableExists(mDbConnectionReader, "form_field_options"))
+                    return true;
+
                 using var dbCommand = mDbConnectionReader.CreateCommand();
 
                 dbCommand.CommandText = "SELECT id, field FROM form_field_options";
@@ -621,6 +630,9 @@ namespace DMSModelConfigDbUpdater
 
             try
             {
+                if (!SQLiteUtilities.TableExists(mDbConnectionReader, "form_field_choosers"))
+                    return true;
+
                 using var dbCommand = mDbConnectionReader.CreateCommand();
 
                 dbCommand.CommandText = "SELECT id, field, XRef FROM form_field_choosers";
@@ -687,6 +699,9 @@ namespace DMSModelConfigDbUpdater
 
             try
             {
+                if (!SQLiteUtilities.TableExists(mDbConnectionReader, "sproc_args"))
+                    return true;
+
                 using var dbCommand = mDbConnectionReader.CreateCommand();
 
                 dbCommand.CommandText = "SELECT id, field, name FROM sproc_args";
