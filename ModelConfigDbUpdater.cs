@@ -66,7 +66,7 @@ namespace DMSModelConfigDbUpdater
             mViewNameMapWithSchema = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
-        private bool ColumnRenamed(string viewName, string currentColumnName, out string columnNameToUse)
+        private bool ColumnRenamed(string viewName, string currentColumnName, out string columnNameToUse, bool snakeCaseName = false)
         {
             if (string.IsNullOrWhiteSpace(currentColumnName))
             {
@@ -74,21 +74,59 @@ namespace DMSModelConfigDbUpdater
                 return false;
             }
 
-            if (!TryGetColumnMap(viewName, out var columnMap))
+            if (currentColumnName.Trim().StartsWith("'") && currentColumnName.Trim().EndsWith("'"))
             {
+                // String literal; leave as-is
                 columnNameToUse = currentColumnName;
                 return false;
+            }
+
+            if (!TryGetColumnMap(viewName, out var columnMap))
+            {
+                columnNameToUse = snakeCaseName
+                    ? ConvertToSnakeCaseAndUpdatePrefix(currentColumnName)
+                    : currentColumnName;
+
+                return !currentColumnName.Equals(columnNameToUse);
             }
 
             if (!columnMap.TryGetValue(currentColumnName, out var columnInfo))
             {
-                columnNameToUse = currentColumnName;
-                return false;
+                columnNameToUse = snakeCaseName
+                    ? ConvertToSnakeCaseAndUpdatePrefix(currentColumnName)
+                    : currentColumnName;
+
+                return !currentColumnName.Equals(columnNameToUse);
             }
 
-            columnNameToUse = columnInfo.NewColumnName;
+            columnNameToUse = snakeCaseName
+                ? ConvertToSnakeCaseAndUpdatePrefix(columnInfo.NewColumnName)
+                : columnInfo.NewColumnName;
 
             return !currentColumnName.Equals(columnNameToUse);
+        }
+
+        private string ConvertToSnakeCaseAndUpdatePrefix(string currentName)
+        {
+            var updatedName = NameUpdater.ConvertNameToSnakeCase(currentName);
+
+            if (updatedName.StartsWith("aj_") ||
+                updatedName.StartsWith("ds_") ||
+                updatedName.StartsWith("ap_") ||
+                updatedName.StartsWith("sc_") ||
+                updatedName.StartsWith("rr_") ||
+                updatedName.StartsWith("sp_"))
+            {
+                return updatedName.Substring(3);
+            }
+
+            if (updatedName.StartsWith("ajr_") ||
+                updatedName.StartsWith("org_"))
+            {
+                return updatedName.Substring(4);
+            }
+
+            return updatedName;
         }
 
         private bool FormFieldRenamed(IReadOnlyDictionary<string, FormFieldInfo> renamedFormFields, string formFieldName, out string newFormFieldName)
@@ -734,9 +772,10 @@ namespace DMSModelConfigDbUpdater
                 if (string.IsNullOrWhiteSpace(viewNameToUse))
                     return string.Empty;
 
-                if (!ColumnRenamed(viewNameToUse, generalParams.Parameters[GeneralParameters.ParameterType.EntryPageDataIdColumn], out var columnNameToUse))
+                if (ColumnRenamed(viewNameToUse, generalParams.Parameters[GeneralParameters.ParameterType.EntryPageDataIdColumn], out var dataIdNameToUse, true))
                 {
-                    UpdateGeneralParameter(generalParams, GeneralParameters.ParameterType.EntryPageDataIdColumn, columnNameToUse);
+                    UpdateGeneralParameter(generalParams, GeneralParameters.ParameterType.EntryPageDataIdColumn, dataIdNameToUse);
+                }
                 }
 
                 return viewNameToUse;
@@ -933,7 +972,7 @@ namespace DMSModelConfigDbUpdater
 
                 foreach (var formField in formFields)
                 {
-                    if (!ColumnRenamed(entryPageView, formField.FormFieldName, out var columnNameToUse))
+                    if (!ColumnRenamed(entryPageView, formField.FormFieldName, out var columnNameToUse, true))
                         continue;
 
                     formField.NewName = columnNameToUse;
