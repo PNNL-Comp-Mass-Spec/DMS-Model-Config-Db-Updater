@@ -804,6 +804,9 @@ namespace DMSModelConfigDbUpdater
                     UpdateEntryPageDataColumns(generalParams);
                 }
 
+                if (ColumnRenamed(viewNameToUse, generalParams.Parameters[GeneralParameters.ParameterType.PostSubmissionDetailId], out var postSubmissionNameToUse, true))
+                {
+                    UpdateGeneralParameter(generalParams, GeneralParameters.ParameterType.PostSubmissionDetailId, postSubmissionNameToUse);
                 }
 
                 return viewNameToUse;
