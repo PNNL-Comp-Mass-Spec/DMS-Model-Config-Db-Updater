@@ -1167,7 +1167,9 @@ namespace DMSModelConfigDbUpdater
             // Update the database
             using var dbCommand = mDbConnectionWriter.CreateCommand();
 
-            dbCommand.CommandText = string.Format("UPDATE general_params set value = '{0}' WHERE name = '{1}'", newValue, generalParamsKeyName);
+            // Note: escape single quotes using ''
+
+            dbCommand.CommandText = string.Format("UPDATE general_params set value = '{0}' WHERE name = '{1}'", newValue.Replace("'", "''"), generalParamsKeyName);
 
             dbCommand.ExecuteNonQuery();
 
