@@ -776,6 +776,12 @@ namespace DMSModelConfigDbUpdater
                 {
                     UpdateGeneralParameter(generalParams, GeneralParameters.ParameterType.EntryPageDataIdColumn, dataIdNameToUse);
                 }
+
+                if (!string.IsNullOrWhiteSpace(generalParams.Parameters[GeneralParameters.ParameterType.EntryPageDataColumns]))
+                {
+                    UpdateEntryPageDataColumns(generalParams);
+                }
+
                 }
 
                 return viewNameToUse;
@@ -945,6 +951,11 @@ namespace DMSModelConfigDbUpdater
             {
                 OnErrorEvent("Error in UpdateDetailReportHotlinks", ex);
             }
+        }
+
+        private void UpdateEntryPageDataColumns(GeneralParameters generalParams)
+        {
+            UpdateListOfDataColumns(generalParams, GeneralParameters.ParameterType.EntryPageDataColumns, GeneralParameters.ParameterType.EntryPageView, true);
         }
 
         private void UpdateFormFields(List<FormFieldInfo> formFields, string entryPageView)
@@ -1222,6 +1233,11 @@ namespace DMSModelConfigDbUpdater
             {
                 OnErrorEvent("Error in UpdateListReportDataColumns", ex);
             }
+        }
+
+        private void UpdateListReportDataColumns(GeneralParameters generalParams)
+        {
+            UpdateListOfDataColumns(generalParams, GeneralParameters.ParameterType.ListReportDataColumns, GeneralParameters.ParameterType.ListReportView, false);
         }
 
         private void UpdateListReportHotlinks(List<FormFieldInfo> formFields, string listReportView)

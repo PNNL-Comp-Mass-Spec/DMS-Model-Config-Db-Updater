@@ -12,14 +12,15 @@ namespace DMSModelConfigDbUpdater
             DetailReportDataIdColumn = 2,
             EntryPageView = 3,
             EntryPageDataIdColumn = 4,
-            ListReportView = 5,
-            ListReportDataColumns = 6,
-            ListReportSortColumn = 7,
-            PostSubmissionDetailId = 8,
-            DetailReportSP = 9,
-            ListReportSP = 10,
-            EntryPageSP = 11,
-            OperationsSP = 12
+            EntryPageDataColumns = 5,
+            ListReportView = 6,
+            ListReportDataColumns = 7,
+            ListReportSortColumn = 8,
+            PostSubmissionDetailId = 9,
+            DetailReportSP = 10,
+            ListReportSP = 11,
+            EntryPageSP = 12,
+            OperationsSP = 13
         }
 
         public Dictionary<ParameterType, string> FieldDescriptions { get; }
@@ -44,6 +45,7 @@ namespace DMSModelConfigDbUpdater
                 { ParameterType.DetailReportDataIdColumn, "detail report data ID column" },
                 { ParameterType.EntryPageView, "entry page view" },
                 { ParameterType.EntryPageDataIdColumn, "entry page data ID column" },
+                { ParameterType.EntryPageDataColumns, "entry page data columns" },
                 { ParameterType.ListReportView, "list report view" },
                 { ParameterType.ListReportDataColumns, "list report data columns" },
                 { ParameterType.ListReportSortColumn, "list report sort column" },
@@ -62,6 +64,7 @@ namespace DMSModelConfigDbUpdater
                 { ParameterType.DetailReportDataIdColumn, "detail_report_data_id_col" },
                 { ParameterType.EntryPageView, "entry_page_data_table" },
                 { ParameterType.EntryPageDataIdColumn, "entry_page_data_id_col" },
+                { ParameterType.EntryPageDataColumns, "entry_page_data_cols" },
                 { ParameterType.ListReportView, "list_report_data_table" },
                 { ParameterType.ListReportDataColumns, "list_report_data_cols" },
                 { ParameterType.ListReportSortColumn, "list_report_data_sort_col" },
