@@ -108,6 +108,11 @@ namespace DMSModelConfigDbUpdater
 
         private string ConvertToSnakeCaseAndUpdatePrefix(string currentName)
         {
+            if (currentName.StartsWith("EUS", StringComparison.OrdinalIgnoreCase) && !currentName.StartsWith("EUS_", StringComparison.OrdinalIgnoreCase))
+            {
+                currentName = "EUS_" + currentName.Substring(3);
+            }
+
             var updatedName = NameUpdater.ConvertNameToSnakeCase(currentName);
 
             if (updatedName.StartsWith("aj_") ||
