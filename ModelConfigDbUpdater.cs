@@ -1417,30 +1417,18 @@ namespace DMSModelConfigDbUpdater
                     if (viewType == GeneralParameters.ParameterType.EntryPageView)
                     {
                         // See if the column alias needs to be updated
-                        if (ColumnRenamed(generalParams.Parameters[viewType], aliasName, out var newAliasName, snakeCaseNames))
-                        {
-                            aliasNameToUse = newAliasName;
-                        }
-                        else
-                        {
-                            aliasNameToUse = aliasName;
-                        }
+                        aliasNameToUse = ColumnRenamed(generalParams.Parameters[viewType], aliasName, out var newAliasName, snakeCaseNames)
+                            ? newAliasName
+                            : aliasName;
                     }
                     else
                     {
                         aliasNameToUse = string.Empty;
                     }
 
-                    string columnNameToUse;
-
-                    if (ColumnRenamed(generalParams.Parameters[viewType], columnNameToFind, out var newColumnName, snakeCaseNames))
-                    {
-                        columnNameToUse = newColumnName;
-                    }
-                    else
-                    {
-                        columnNameToUse = columnNameToFind;
-                    }
+                    var columnNameToUse = ColumnRenamed(generalParams.Parameters[viewType], columnNameToFind, out var newColumnName, snakeCaseNames)
+                        ? newColumnName
+                        : columnNameToFind;
 
                     if (string.IsNullOrWhiteSpace(aliasNameToUse))
                     {
