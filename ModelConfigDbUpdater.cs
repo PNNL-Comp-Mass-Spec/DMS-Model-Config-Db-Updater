@@ -13,6 +13,12 @@ namespace DMSModelConfigDbUpdater
     {
         // Ignore Spelling: dms, dpkg, mc, ont, sw
 
+        private const string DB_TABLE_DETAIL_REPORT_HOTLINKS = "detail_report_hotlinks";
+
+        private const string DB_TABLE_LIST_REPORT_HOTLINKS = "list_report_hotlinks";
+
+        private const string DB_TABLE_LIST_REPORT_PRIMARY_FILTER = "list_report_primary_filter";
+
         /// <summary>
         /// Match any character that is not a letter, number, or underscore
         /// </summary>
@@ -30,6 +36,11 @@ namespace DMSModelConfigDbUpdater
         private readonly SortedSet<string> mMissingViews = new();
 
         private readonly ModelConfigDbUpdaterOptions mOptions;
+
+        /// <summary>
+        /// This is used to look for one or more plus signs at the start of a column name
+        /// </summary>
+        private readonly Regex mPlusSignMatcher = new(@" *(?<Prefix>\++)(?<ColumnName>.+)", RegexOptions.Compiled);
 
         /// <summary>
         /// Keys in this dictionary are view names, as read from the tab-delimited text file; names should include the schema and may be quoted
@@ -150,6 +161,41 @@ namespace DMSModelConfigDbUpdater
 
             newFormFieldName = formFieldInfo.NewFieldName;
             return true;
+        }
+
+        /// <summary>
+        /// Look for plus signs before the field name
+        /// If found, return them in the prefix argument
+        /// </summary>
+        /// <param name="fieldName"></param>
+        /// <param name="prefix"></param>
+        /// <returns>Name without any initial plus signs</returns>
+        private string GetCleanFieldName(string fieldName, out string prefix)
+        {
+            var match = mPlusSignMatcher.Match(fieldName);
+
+            if (match.Success)
+            {
+                prefix = match.Groups["Prefix"].Value;
+                return match.Groups["ColumnName"].Value;
+            }
+
+            prefix = string.Empty;
+            return fieldName;
+        }
+
+        /// <summary>
+        /// Get the name of the ID column for the given table in the SQLite database
+        /// </summary>
+        /// <param name="tableName"></param>
+        /// <returns>ID column name</returns>
+        private string GetIdFieldName(string tableName)
+        {
+            return tableName switch
+            {
+                DB_TABLE_DETAIL_REPORT_HOTLINKS => "idx",
+                _ => "id"
+            };
         }
 
         /// <summary>
@@ -567,16 +613,16 @@ namespace DMSModelConfigDbUpdater
                 if (mOptions.RenameListReportViewAndColumns)
                 {
                     var listReportView = RenameListReportView(generalParams);
-                    UpdateListReportHotlinks(formFields, listReportView);
+                    UpdateListReportHotlinks(listReportView);
 
                     // Update list_report_primary_filter and primary_filter_choosers
-                    UpdateListReportPrimaryFilter(formFields, listReportView);
+                    UpdateListReportPrimaryFilter(listReportView);
                 }
 
                 if (mOptions.RenameDetailReportViewAndColumns)
                 {
                     var detailReportView = RenameDetailReportView(generalParams);
-                    UpdateDetailReportHotlinks(formFields, detailReportView);
+                    UpdateDetailReportHotlinks(detailReportView);
                 }
 
                 if (mOptions.RenameStoredProcedures)
@@ -759,6 +805,63 @@ namespace DMSModelConfigDbUpdater
                 OnErrorEvent("Error in ReadGeneralParams", ex);
                 return false;
             }
+        }
+
+        private List<HotLinkInfo> ReadHotlinks(string tableName)
+        {
+            var hotLinks = new List<HotLinkInfo>();
+
+            if (!SQLiteUtilities.TableExists(mDbConnectionReader, tableName))
+            {
+                return hotLinks;
+            }
+
+            var idFieldName = GetIdFieldName(tableName);
+
+            using var dbCommand = mDbConnectionReader.CreateCommand();
+
+            dbCommand.CommandText = string.Format("SELECT {0}, name, LinkType, WhichArg FROM {1}", idFieldName, tableName);
+
+            using var reader = dbCommand.ExecuteReader();
+
+            while (reader.Read())
+            {
+                var id = SQLiteUtilities.GetInt32(reader, idFieldName);
+                var fieldName = SQLiteUtilities.GetString(reader, "name");
+                var linkType = SQLiteUtilities.GetString(reader, "LinkType");
+                var whichArg = SQLiteUtilities.GetString(reader, "WhichArg");
+
+                hotLinks.Add(new HotLinkInfo(id, fieldName, linkType, whichArg));
+            }
+
+            return hotLinks;
+        }
+
+        private List<PrimaryFilterInfo> ReadPrimaryFilters(string tableName)
+        {
+            var primaryFilters = new List<PrimaryFilterInfo>();
+
+            if (!SQLiteUtilities.TableExists(mDbConnectionReader, tableName))
+            {
+                return primaryFilters;
+            }
+
+            using var dbCommand = mDbConnectionReader.CreateCommand();
+
+            dbCommand.CommandText = string.Format("SELECT id, label, col FROM {0}", tableName);
+
+            using var reader = dbCommand.ExecuteReader();
+
+            while (reader.Read())
+            {
+                var id = SQLiteUtilities.GetInt32(reader, "id");
+                var label = SQLiteUtilities.GetString(reader, "label");
+                var fieldName = SQLiteUtilities.GetString(reader, "col");
+
+                primaryFilters.Add(new PrimaryFilterInfo(id, label, fieldName));
+            }
+
+            return primaryFilters;
         }
 
         private bool ReadStoredProcedureArguments(out List<StoredProcArgumentInfo> storedProcedureArguments)
@@ -978,11 +1081,22 @@ namespace DMSModelConfigDbUpdater
             return false;
         }
 
-        private void UpdateDetailReportHotlinks(List<FormFieldInfo> formFields, string detailReportView)
+        /// <summary>
+        /// Update column names referenced by detail report hotlinks
+        /// </summary>
+        /// <param name="detailReportView"></param>
+        private void UpdateDetailReportHotlinks(string detailReportView)
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(detailReportView))
+                {
+                    return;
+                }
 
+                var detailReportHotlinks = ReadHotlinks(DB_TABLE_DETAIL_REPORT_HOTLINKS);
+
+                UpdateHotlinks(detailReportView, DB_TABLE_DETAIL_REPORT_HOTLINKS, detailReportHotlinks);
             }
             catch (Exception ex)
             {
@@ -1194,6 +1308,81 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
+        private void UpdateHotlinks(string sourceView, string tableName, List<HotLinkInfo> hotlinks)
+        {
+            foreach (var item in hotlinks)
+            {
+                var originalColumnName = GetCleanFieldName(item.FieldName, out var prefix);
+
+                if (ColumnRenamed(sourceView, originalColumnName, out var columnNameToUse))
+                {
+                    item.NewFieldName = prefix + columnNameToUse;
+                    item.Updated = true;
+                }
+
+                // List report hotlinks often use "value" to indicate the value to use in the link is the same column that the hotlink appears in
+                // Hotlinks with an empty string for WhichArg include color_label and literal_link
+
+                if (string.IsNullOrWhiteSpace(item.WhichArg) ||
+                    tableName.Equals(DB_TABLE_LIST_REPORT_HOTLINKS) && item.WhichArg.Equals("value", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                // ReSharper disable once InvertIf
+                if (ColumnRenamed(sourceView, item.WhichArg, out var targetColumnToUse))
+                {
+                    item.WhichArg = targetColumnToUse;
+                    item.Updated = true;
+                }
+            }
+
+            var saveChanges = hotlinks.Any(item => item.Updated);
+
+            if (!saveChanges)
+                return;
+
+            if (mOptions.PreviewUpdates)
+            {
+                Console.WriteLine();
+                OnStatusEvent("Hotlink updates for {0} in {1}", sourceView, mCurrentConfigDB);
+            }
+
+            var idFieldName = GetIdFieldName(tableName);
+
+            using var dbCommand = mDbConnectionWriter.CreateCommand();
+
+            var updatedItems = 0;
+
+            foreach (var item in hotlinks)
+            {
+                if (!item.Updated)
+                    continue;
+
+                var nameToUse = string.IsNullOrWhiteSpace(item.NewFieldName) ? item.FieldName : item.NewFieldName;
+
+                if (mOptions.PreviewUpdates)
+                {
+                    OnStatusEvent("{0,2}: {1,-30} {2,-20} {3}", item.ID, nameToUse, item.LinkType, item.WhichArg);
+                    continue;
+                }
+
+                dbCommand.CommandText = string.Format(
+                    "UPDATE {0} SET name = '{1}', WhichArg = '{2}' WHERE {3} = {4}",
+                    tableName, nameToUse, item.WhichArg, idFieldName, item.ID);
+
+                dbCommand.ExecuteNonQuery();
+                updatedItems++;
+            }
+
+            if (mOptions.PreviewUpdates)
+                return;
+
+            OnStatusEvent(
+                "{0,-25} Renamed {1} hotlink{2} in '{3}'", mCurrentConfigDB + ":",
+                updatedItems, updatedItems == 1 ? string.Empty : "s", sourceView);
+        }
+
         private void UpdateListOfDataColumns(
             GeneralParameters generalParams,
             GeneralParameters.ParameterType parameterType,
@@ -1279,11 +1468,22 @@ namespace DMSModelConfigDbUpdater
             UpdateListOfDataColumns(generalParams, GeneralParameters.ParameterType.ListReportDataColumns, GeneralParameters.ParameterType.ListReportView, false);
         }
 
-        private void UpdateListReportHotlinks(List<FormFieldInfo> formFields, string listReportView)
+        /// <summary>
+        /// Update column names referenced by list report hotlinks
+        /// </summary>
+        /// <param name="listReportView"></param>
+        private void UpdateListReportHotlinks(string listReportView)
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(listReportView))
+                {
+                    return;
+                }
 
+                var listReportHotlinks = ReadHotlinks(DB_TABLE_LIST_REPORT_HOTLINKS);
+
+                UpdateHotlinks(listReportView, DB_TABLE_LIST_REPORT_HOTLINKS, listReportHotlinks);
             }
             catch (Exception ex)
             {
@@ -1291,15 +1491,99 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        private void UpdateListReportPrimaryFilter(List<FormFieldInfo> formFields, string listReportView)
+        /// <summary>
+        /// Update column names referenced by list report primary filters
+        /// </summary>
+        /// <param name="listReportView"></param>
+        private void UpdateListReportPrimaryFilter(string listReportView)
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(listReportView))
+                {
+                    return;
+                }
 
+                var primaryFilters = ReadPrimaryFilters(DB_TABLE_LIST_REPORT_PRIMARY_FILTER);
+
+                UpdatePrimaryFilters(listReportView, DB_TABLE_LIST_REPORT_PRIMARY_FILTER, primaryFilters);
             }
             catch (Exception ex)
             {
                 OnErrorEvent("Error in UpdateListReportPrimaryFilter", ex);
+            }
+        }
+
+        private void UpdatePrimaryFilters(string sourceView, string tableName, List<PrimaryFilterInfo> primaryFilters)
+        {
+            foreach (var item in primaryFilters)
+            {
+                if (ColumnRenamed(sourceView, item.FieldName, out var columnNameToUse))
+                {
+                    item.NewFieldName = columnNameToUse;
+                    item.Updated = true;
+                }
+            }
+
+            var saveChanges = primaryFilters.Any(item => item.Updated);
+
+            if (!saveChanges)
+                return;
+
+            if (mOptions.PreviewUpdates)
+            {
+                Console.WriteLine();
+                OnStatusEvent("Primary filter updates for {0} in {1}", sourceView, mCurrentConfigDB);
+            }
+
+            using var dbCommand = mDbConnectionWriter.CreateCommand();
+
+            var updatedItems = 0;
+
+            foreach (var item in primaryFilters)
+            {
+                if (!item.Updated)
+                    continue;
+
+                var nameToUse = string.IsNullOrWhiteSpace(item.NewFieldName) ? item.FieldName : item.NewFieldName;
+
+                if (mOptions.PreviewUpdates)
+                {
+                    OnStatusEvent("{0,2}: {1,-30}", item.ID, nameToUse);
+                    continue;
+                }
+
+                dbCommand.CommandText = string.Format("UPDATE {0} SET col = '{1}' WHERE id = {2}", tableName, nameToUse, item.ID);
+
+                dbCommand.ExecuteNonQuery();
+                updatedItems++;
+            }
+
+            if (mOptions.PreviewUpdates)
+                return;
+
+            OnStatusEvent(
+                "{0,-25} Renamed {1} primary filter{2} in '{3}'", mCurrentConfigDB + ":",
+                updatedItems, updatedItems == 1 ? string.Empty : "s", sourceView);
+        }
+
+        private bool ValidateFormFieldNames()
+        {
+            try
+            {
+                throw new NotImplementedException(
+                    "Need to implement logic to " +
+                    "a) read form field names from the .db file, " +
+                    "b) look for mismatches vs. the entry view (present in the .db but not the view, or vice versa), " +
+                    "c) validate form field names in other tables, including sproc_args, form_field_choosers (including XRef), form_field_options, external sources, " +
+                    "   and general params with the post_submission_detail_id and entry_page_data_id_col parameters");
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ValidateFormFieldNames", ex);
+                return false;
             }
         }
 
