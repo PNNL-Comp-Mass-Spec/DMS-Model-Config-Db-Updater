@@ -11,7 +11,7 @@ namespace DMSModelConfigDbUpdater
 {
     public class ModelConfigDbUpdater : EventNotifier
     {
-        // Ignore Spelling: dms, dpkg, mc, ont, sw
+        // Ignore Spelling: dms, dpkg, hotlink, hotlinks, idx, mc, ont, Postgres, sw
 
         private const string DB_TABLE_DETAIL_REPORT_HOTLINKS = "detail_report_hotlinks";
 
@@ -302,10 +302,10 @@ namespace DMSModelConfigDbUpdater
             RegisterEvents(mapReader);
 
             // In dictionary tableNameMap, keys are the original (source) table names
-            // and values are WordReplacer classes that track the new table names and new column names in PostgreSQL
+            // and values are WordReplacer classes that track the new table names and new column names in Postgres
 
             // In dictionary viewColumnNameMap, keys are new table names
-            // and values are a Dictionary of mappings of original column names to new column names in PostgreSQL;
+            // and values are a Dictionary of mappings of original column names to new column names in Postgres;
             // names should not have double quotes around them
 
             // Dictionary tableNameMapSynonyms has original table names to new table names
@@ -488,7 +488,7 @@ namespace DMSModelConfigDbUpdater
                 return '[' + objectName + ']';
             }
 
-            // PostgreSQL quotes names with double quotes
+            // Postgres quotes names with double quotes
             return '"' + objectName + '"';
         }
 

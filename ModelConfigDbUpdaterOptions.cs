@@ -7,7 +7,7 @@ namespace DMSModelConfigDbUpdater
 {
     public class ModelConfigDbUpdaterOptions
     {
-        // Ignore Spelling: dataset, pre
+        // Ignore Spelling: dataset, Postgres, pre
 
         /// <summary>
         /// Program date
@@ -67,8 +67,8 @@ namespace DMSModelConfigDbUpdater
 
         [Option("UsePostgresSchema", "UsePgSchema", HelpShowsDefault = true,
             HelpText = "When true, if the object name does not already have a schema and the db_group for the page family is defined, " +
-                       "preface object names with the PostgreSQL schema that applies to the database group\n" +
-                       "This should only be set to true if the DMS website is now retrieving data from PostgreSQL and schema names need to be added to page families")]
+                       "preface object names with the Postgres schema that applies to the database group\n" +
+                       "This should only be set to true if the DMS website is now retrieving data from Postgres and schema names need to be added to page families")]
         public bool UsePostgresSchema { get; set; }
 
         /// <summary>
