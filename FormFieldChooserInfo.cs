@@ -1,6 +1,6 @@
 ﻿namespace DMSModelConfigDbUpdater
 {
-    internal class FormFieldChooserInfo : BasicFormField
+    internal class FormFieldChooserInfo : BasicField
     {
         public string CrossReference { get; }
 
@@ -9,11 +9,14 @@
             CrossReference = crossReference;
         }
 
+        /// <summary>
+        /// Show the original form field name, plus the cross reference name (from column "XRef"), if defined
+        /// </summary>
         public override string ToString()
         {
             return string.IsNullOrWhiteSpace(CrossReference)
                 ? base.ToString()
-                : string.Format("{0} (cross reference {1})", FormFieldName, CrossReference);
+                : string.Format("{0} (cross reference {1})", FieldName, CrossReference);
         }
     }
 }

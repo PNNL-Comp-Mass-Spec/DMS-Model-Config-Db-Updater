@@ -148,7 +148,7 @@ namespace DMSModelConfigDbUpdater
                 return false;
             }
 
-            newFormFieldName = formFieldInfo.NewName;
+            newFormFieldName = formFieldInfo.NewFieldName;
             return true;
         }
 
@@ -595,9 +595,9 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        private bool ReadExternalSources(out List<BasicFormField> externalSources)
+        private bool ReadExternalSources(out List<BasicField> externalSources)
         {
-            externalSources = new List<BasicFormField>();
+            externalSources = new List<BasicField>();
 
             try
             {
@@ -615,7 +615,7 @@ namespace DMSModelConfigDbUpdater
                     var id = SQLiteUtilities.GetInt32(reader, "id");
                     var formField = SQLiteUtilities.GetString(reader, "field");
 
-                    externalSources.Add(new BasicFormField(id, formField));
+                    externalSources.Add(new BasicField(id, formField));
                 }
 
                 return true;
@@ -660,9 +660,9 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        private bool ReadFormFieldOptions(out List<BasicFormField> formFieldOptions)
+        private bool ReadFormFieldOptions(out List<BasicField> formFieldOptions)
         {
-            formFieldOptions = new List<BasicFormField>();
+            formFieldOptions = new List<BasicField>();
 
             try
             {
@@ -680,7 +680,7 @@ namespace DMSModelConfigDbUpdater
                     var id = SQLiteUtilities.GetInt32(reader, "id");
                     var formField = SQLiteUtilities.GetString(reader, "field");
 
-                    formFieldOptions.Add(new BasicFormField(id, formField));
+                    formFieldOptions.Add(new BasicField(id, formField));
                 }
 
                 return true;
@@ -1020,11 +1020,11 @@ namespace DMSModelConfigDbUpdater
 
                 foreach (var formField in formFields)
                 {
-                    if (!ColumnRenamed(entryPageView, formField.FormFieldName, out var columnNameToUse, true))
+                    if (!ColumnRenamed(entryPageView, formField.FieldName, out var columnNameToUse, true))
                         continue;
 
-                    formField.NewName = columnNameToUse;
-                    renamedFormFields.Add(formField.FormFieldName, formField);
+                    formField.NewFieldName = columnNameToUse;
+                    renamedFormFields.Add(formField.FieldName, formField);
                 }
 
                 if (mOptions.PreviewUpdates)
@@ -1042,7 +1042,7 @@ namespace DMSModelConfigDbUpdater
                 {
                     dbCommand.CommandText = string.Format(
                         "UPDATE form_fields SET Name = '{0}' WHERE id = {1}",
-                        formField.NewName, formField.ID);
+                        formField.NewFieldName, formField.ID);
 
                     dbCommand.ExecuteNonQuery();
                 }
@@ -1055,7 +1055,7 @@ namespace DMSModelConfigDbUpdater
 
                 foreach (var procedureArgument in storedProcedureArguments)
                 {
-                    if (!FormFieldRenamed(renamedFormFields, procedureArgument.FormFieldName, out var newFormFieldName))
+                    if (!FormFieldRenamed(renamedFormFields, procedureArgument.FieldName, out var newFormFieldName))
                         continue;
 
                     dbCommand.CommandText = string.Format(
@@ -1074,7 +1074,7 @@ namespace DMSModelConfigDbUpdater
 
                 foreach (var formFieldChooser in formFieldChoosers)
                 {
-                    var fieldRenamed = FormFieldRenamed(renamedFormFields, formFieldChooser.FormFieldName, out var newFormFieldName);
+                    var fieldRenamed = FormFieldRenamed(renamedFormFields, formFieldChooser.FieldName, out var newFormFieldName);
 
                     var crossReferenceRenamed = FormFieldRenamed(renamedFormFields, formFieldChooser.CrossReference, out var newCrossReferenceFieldName);
 
@@ -1111,7 +1111,7 @@ namespace DMSModelConfigDbUpdater
 
                 foreach (var formFieldOption in formFieldOptions)
                 {
-                    if (!FormFieldRenamed(renamedFormFields, formFieldOption.FormFieldName, out var newFormFieldName))
+                    if (!FormFieldRenamed(renamedFormFields, formFieldOption.FieldName, out var newFormFieldName))
                         continue;
 
                     dbCommand.CommandText = string.Format(
@@ -1130,7 +1130,7 @@ namespace DMSModelConfigDbUpdater
 
                 foreach (var externalSource in externalSources)
                 {
-                    if (!FormFieldRenamed(renamedFormFields, externalSource.FormFieldName, out var newFormFieldName))
+                    if (!FormFieldRenamed(renamedFormFields, externalSource.FieldName, out var newFormFieldName))
                         continue;
 
                     dbCommand.CommandText = string.Format(

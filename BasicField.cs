@@ -1,20 +1,20 @@
 ﻿namespace DMSModelConfigDbUpdater
 {
-    internal class BasicFormField
+    internal class BasicField
     {
         public int ID { get; }
 
-        public string FormFieldName { get; }
+        public string FieldName { get; }
 
-        public BasicFormField(int id, string formFieldName)
+        public BasicField(int id, string fieldName)
         {
             ID = id;
-            FormFieldName = formFieldName;
+            FieldName = fieldName;
         }
 
         public override string ToString()
         {
-            return FormFieldName;
+            return FieldName;
         }
     }
 }

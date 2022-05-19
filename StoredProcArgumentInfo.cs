@@ -1,6 +1,6 @@
 ﻿namespace DMSModelConfigDbUpdater
 {
-    internal class StoredProcArgumentInfo : BasicFormField
+    internal class StoredProcArgumentInfo : BasicField
     {
         public string ArgumentName { get; }
 
@@ -11,7 +11,7 @@
 
         public override string ToString()
         {
-            return string.Format("{0}: {1}", FormFieldName, ArgumentName);
+            return string.Format("{0}: {1}", FieldName, ArgumentName);
         }
     }
 }
