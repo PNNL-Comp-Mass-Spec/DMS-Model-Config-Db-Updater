@@ -834,7 +834,7 @@ namespace DMSModelConfigDbUpdater
                 if (string.IsNullOrWhiteSpace(viewNameToUse))
                     return string.Empty;
 
-                if (!ColumnRenamed(viewNameToUse, generalParams.Parameters[GeneralParameters.ParameterType.DetailReportDataIdColumn], out var columnNameToUse))
+                if (ColumnRenamed(viewNameToUse, generalParams.Parameters[GeneralParameters.ParameterType.DetailReportDataIdColumn], out var columnNameToUse))
                 {
                     UpdateGeneralParameter(generalParams, GeneralParameters.ParameterType.DetailReportDataIdColumn, columnNameToUse);
                 }
@@ -856,7 +856,7 @@ namespace DMSModelConfigDbUpdater
                 if (string.IsNullOrWhiteSpace(viewNameToUse))
                     return string.Empty;
 
-                if (!ColumnRenamed(viewNameToUse, generalParams.Parameters[GeneralParameters.ParameterType.ListReportSortColumn], out var columnNameToUse))
+                if (ColumnRenamed(viewNameToUse, generalParams.Parameters[GeneralParameters.ParameterType.ListReportSortColumn], out var columnNameToUse))
                 {
                     UpdateGeneralParameter(generalParams, GeneralParameters.ParameterType.ListReportSortColumn, columnNameToUse);
                 }
