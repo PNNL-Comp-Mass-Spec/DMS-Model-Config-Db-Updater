@@ -52,13 +52,16 @@
   <ItemGroup>
     <Compile Include="ColumnNameInfo.cs" />
     <Compile Include="BasicField.cs" />
+    <Compile Include="DatabaseColumnInfo.cs" />
     <Compile Include="FormFieldChooserInfo.cs" />
     <Compile Include="FormFieldInfo.cs" />
     <Compile Include="GeneralParameters.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="HotLinkInfo.cs" />
+    <Compile Include="LevenshteinDistance.cs" />
     <Compile Include="ModelConfigDbUpdater.cs" />
     <Compile Include="ModelConfigDbUpdaterOptions.cs" />
+    <Compile Include="ModelConfigDbValidator.cs" />
     <Compile Include="PrimaryFilterInfo.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -69,6 +72,9 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="PRISM-DatabaseUtils">
+      <Version>1.2.0</Version>
+    </PackageReference>
     <PackageReference Include="PRISM-Library">
       <Version>2.7.0</Version>
     </PackageReference>

@@ -12,7 +12,7 @@ namespace DMSModelConfigDbUpdater
         /// <summary>
         /// Program date
         /// </summary>
-        public const string PROGRAM_DATE = "May 17, 2022";
+        public const string PROGRAM_DATE = "May 20, 2022";
 
         [Option("InputDirectory", "Input", "I", ArgPosition = 1, HelpShowsDefault = false, IsInputFilePath = false,
             HelpText = "Directory with the DMS model config database files to update\n" +
@@ -28,6 +28,11 @@ namespace DMSModelConfigDbUpdater
                        "Treated as a path relative to the input files if not rooted\n" +
                        "If an empty string, updates files in-place")]
         public string OutputDirectory { get; set; }
+
+        [Option("DatabaseServer", "Server", HelpShowsDefault = true,
+            HelpText = "Server name to contact to validate form field names against columns in tables or views\n" +
+                       "Assumed to be SQL Server if UsePostgresSchema is false; otherwise, assume Postgres")]
+        public string DatabaseServer { get; set; }
 
         [Option("ViewColumnMap", "Map", "M", HelpShowsDefault = false, IsInputFilePath = true,
             HelpText = "View column map file (typically created by PgSqlViewCreatorHelper.exe)\n" +
@@ -71,6 +76,12 @@ namespace DMSModelConfigDbUpdater
                        "This should only be set to true if the DMS website is now retrieving data from Postgres and schema names need to be added to page families")]
         public bool UsePostgresSchema { get; set; }
 
+        [Option("ValidateColumnNames", "ValidateColumns", "Validate", HelpShowsDefault = true,
+            HelpText = "When true, read column names used in each SQLite file and validate against the column names " +
+                       "in the source tables or views for list reports, detail reports, and entry pages\n" +
+                       "When this is true, the name map files are not loaded, and no object renaming is performed")]
+        public bool ValidateColumnNamesWithDatabase { get; set; }
+
         /// <summary>
         /// Constructor
         /// </summary>
@@ -110,23 +121,27 @@ namespace DMSModelConfigDbUpdater
                     ? "n/a: updating files in-place"
                     : PathUtils.CompactPathString(OutputDirectory, 80));
 
-            Console.WriteLine(" {0,-30} {1}", "View Column Map File:", PathUtils.CompactPathString(ViewColumnMapFile, 80));
-
-            if (!string.IsNullOrWhiteSpace(TableNameMapFile))
+            if (!ValidateColumnNamesWithDatabase)
             {
-                Console.WriteLine(" {0,-30} {1}", "Table Name Map File:", PathUtils.CompactPathString(TableNameMapFile, 80));
+                Console.WriteLine(" {0,-30} {1}", "View Column Map File:", PathUtils.CompactPathString(ViewColumnMapFile, 80));
+
+                if (!string.IsNullOrWhiteSpace(TableNameMapFile))
+                {
+                    Console.WriteLine(" {0,-30} {1}", "Table Name Map File:", PathUtils.CompactPathString(TableNameMapFile, 80));
+                }
+
+                Console.WriteLine(" {0,-30} {1}", "Preview Updates:", PreviewUpdates);
+
+                Console.WriteLine(" {0,-40} {1}", "Rename List Report View and Columns:", RenameListReportViewAndColumns);
+
+                Console.WriteLine(" {0,-40} {1}", "Rename Detail Report View and Columns:", RenameDetailReportViewAndColumns);
+
+                Console.WriteLine(" {0,-40} {1}", "Rename Entry Page View and Columns:", RenameEntryPageViewAndColumns);
+
+                Console.WriteLine(" {0,-40} {1}", "Rename Stored Procedures:", RenameStoredProcedures);
             }
 
-            Console.WriteLine(" {0,-30} {1}", "Preview Updates:", PreviewUpdates);
-
-            Console.WriteLine(" {0,-40} {1}", "Rename List Report View and Columns:", RenameListReportViewAndColumns);
-
-            Console.WriteLine(" {0,-40} {1}", "Rename Detail Report View and Columns:", RenameDetailReportViewAndColumns);
-
-            Console.WriteLine(" {0,-40} {1}", "Rename Entry Page View and Columns:", RenameEntryPageViewAndColumns);
-
-            Console.WriteLine(" {0,-40} {1}", "Rename Stored Procedures:", RenameStoredProcedures);
-
+            Console.WriteLine(" {0,-40} {1}", "Validate Column Names with DB:", ValidateColumnNamesWithDatabase);
             Console.WriteLine();
         }
 
@@ -142,7 +157,7 @@ namespace DMSModelConfigDbUpdater
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(ViewColumnMapFile))
+            if (!ValidateColumnNamesWithDatabase && string.IsNullOrWhiteSpace(ViewColumnMapFile))
             {
                 errorMessage = "Use /M to specify the view column map file";
                 return false;

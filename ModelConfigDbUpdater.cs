@@ -13,18 +13,18 @@ namespace DMSModelConfigDbUpdater
     {
         // Ignore Spelling: dms, dpkg, hotlink, hotlinks, idx, mc, ont, Postgres, sw
 
-        private const string DB_TABLE_DETAIL_REPORT_HOTLINKS = "detail_report_hotlinks";
+        internal const string DB_TABLE_DETAIL_REPORT_HOTLINKS = "detail_report_hotlinks";
 
-        private const string DB_TABLE_LIST_REPORT_HOTLINKS = "list_report_hotlinks";
+        internal const string DB_TABLE_GENERAL_PARAMS = "general_params";
 
-        private const string DB_TABLE_LIST_REPORT_PRIMARY_FILTER = "list_report_primary_filter";
+        internal const string DB_TABLE_LIST_REPORT_HOTLINKS = "list_report_hotlinks";
+
+        internal const string DB_TABLE_LIST_REPORT_PRIMARY_FILTER = "list_report_primary_filter";
 
         /// <summary>
         /// Match any character that is not a letter, number, or underscore
         /// </summary>
         private readonly Regex mColumnCharNonStandardMatcher = new("[^a-z0-9_]", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
-
-        private string mCurrentConfigDB;
 
         private SQLiteConnection mDbConnectionReader;
 
@@ -35,12 +35,17 @@ namespace DMSModelConfigDbUpdater
         /// </summary>
         private readonly SortedSet<string> mMissingViews = new();
 
-        private readonly ModelConfigDbUpdaterOptions mOptions;
-
         /// <summary>
         /// This is used to look for one or more plus signs at the start of a column name
         /// </summary>
         private readonly Regex mPlusSignMatcher = new(@" *(?<Prefix>\++)(?<ColumnName>.+)", RegexOptions.Compiled);
+
+        /// <summary>
+        /// Dictionary tracking validation results
+        /// Keys are model config DB file names
+        /// Values are the number of errors found
+        /// </summary>
+        private readonly Dictionary<string, int> mValidationResults = new();
 
         /// <summary>
         /// Keys in this dictionary are view names, as read from the tab-delimited text file; names should include the schema and may be quoted
@@ -61,14 +66,24 @@ namespace DMSModelConfigDbUpdater
         private readonly Dictionary<string, string> mViewNameMapWithSchema;
 
         /// <summary>
+        /// Filename of the current model config DB
+        /// </summary>
+        public string CurrentConfigDB { get; set; }
+
+        /// <summary>
+        /// Processing options
+        /// </summary>
+        public ModelConfigDbUpdaterOptions Options { get; }
+
+        /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="options"></param>
         public ModelConfigDbUpdater(ModelConfigDbUpdaterOptions options)
         {
-            mOptions = options;
+            Options = options;
 
-            mCurrentConfigDB = string.Empty;
+            CurrentConfigDB = string.Empty;
 
             mViewColumnNameMap = new Dictionary<string, Dictionary<string, ColumnNameInfo>>(StringComparer.OrdinalIgnoreCase);
 
@@ -205,7 +220,7 @@ namespace DMSModelConfigDbUpdater
         /// Simply looks for the first period and assumes the schema name is before the period and the object name is after it
         /// </remarks>
         /// <param name="objectName"></param>
-        private static string GetNameWithoutSchema(string objectName)
+        internal static string GetNameWithoutSchema(string objectName)
         {
             if (string.IsNullOrWhiteSpace(objectName))
                 return string.Empty;
@@ -217,11 +232,25 @@ namespace DMSModelConfigDbUpdater
             return objectName;
         }
 
+        /// <summary>
+        /// Get the schema name, or "public" if no schema
+        /// </summary>
+        /// <param name="objectName"></param>
+        internal static string GetSchemaName(string objectName)
+        {
+            if (string.IsNullOrWhiteSpace(objectName))
+                return string.Empty;
+
+            var periodIndex = objectName.IndexOf('.');
+
+            return periodIndex > 0 ? objectName.Substring(0, periodIndex) : "public";
+        }
+
         private bool InitializeWriter(FileInfo modelConfigDb)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(mOptions.OutputDirectory))
+                if (string.IsNullOrWhiteSpace(Options.OutputDirectory))
                 {
                     // Update files in-place
                     mDbConnectionWriter = mDbConnectionReader;
@@ -234,9 +263,9 @@ namespace DMSModelConfigDbUpdater
                     return false;
                 }
 
-                var targetDirectoryPath = Path.IsPathRooted(mOptions.OutputDirectory)
-                    ? mOptions.OutputDirectory
-                    : Path.Combine(modelConfigDb.Directory.FullName, mOptions.OutputDirectory);
+                var targetDirectoryPath = Path.IsPathRooted(Options.OutputDirectory)
+                    ? Options.OutputDirectory
+                    : Path.Combine(modelConfigDb.Directory.FullName, Options.OutputDirectory);
 
                 if (targetDirectoryPath.Equals(modelConfigDb.Directory.FullName, StringComparison.OrdinalIgnoreCase))
                 {
@@ -279,7 +308,7 @@ namespace DMSModelConfigDbUpdater
             catch (Exception ex)
             {
                 OnErrorEvent("Error in InitializeWriter", ex);
-                mCurrentConfigDB = string.Empty;
+                CurrentConfigDB = string.Empty;
                 return false;
             }
         }
@@ -290,7 +319,7 @@ namespace DMSModelConfigDbUpdater
             mViewNameMap.Clear();
             mViewNameMapWithSchema.Clear();
 
-            var viewColumnMapFile = new FileInfo(mOptions.ViewColumnMapFile);
+            var viewColumnMapFile = new FileInfo(Options.ViewColumnMapFile);
 
             if (!viewColumnMapFile.Exists)
             {
@@ -317,10 +346,10 @@ namespace DMSModelConfigDbUpdater
 
             var tableNameMapSynonyms = new Dictionary<string, string>();
 
-            if (string.IsNullOrWhiteSpace(mOptions.TableNameMapFile))
+            if (string.IsNullOrWhiteSpace(Options.TableNameMapFile))
                 return true;
 
-            var tableNameMapFile = new FileInfo(mOptions.TableNameMapFile);
+            var tableNameMapFile = new FileInfo(Options.TableNameMapFile);
             if (!tableNameMapFile.Exists)
             {
                 OnErrorEvent("Table name map file not found: " + tableNameMapFile.FullName);
@@ -432,7 +461,7 @@ namespace DMSModelConfigDbUpdater
 
         private string PossiblyAddSchema(GeneralParameters generalParams, string objectName)
         {
-            if (!mOptions.UsePostgresSchema)
+            if (!Options.UsePostgresSchema)
             {
                 if (objectName.StartsWith("\"public\""))
                 {
@@ -500,7 +529,7 @@ namespace DMSModelConfigDbUpdater
         {
             try
             {
-                var inputDirectory = new DirectoryInfo(mOptions.InputDirectory);
+                var inputDirectory = new DirectoryInfo(Options.InputDirectory);
                 if (!inputDirectory.Exists)
                 {
                     OnErrorEvent("Input directory not found: " + inputDirectory.FullName);
@@ -512,20 +541,20 @@ namespace DMSModelConfigDbUpdater
                     return false;
 
                 string searchPattern;
-                if (string.IsNullOrWhiteSpace(mOptions.FilenameFilter))
+                if (string.IsNullOrWhiteSpace(Options.FilenameFilter))
                 {
                     searchPattern = "*.db";
                 }
-                else if (mOptions.FilenameFilter.EndsWith(".db", StringComparison.OrdinalIgnoreCase))
+                else if (Options.FilenameFilter.EndsWith(".db", StringComparison.OrdinalIgnoreCase))
                 {
-                    searchPattern = mOptions.FilenameFilter;
+                    searchPattern = Options.FilenameFilter;
                 }
                 else
                 {
-                    if (mOptions.FilenameFilter.Contains("*"))
-                        searchPattern = mOptions.FilenameFilter + ".db";
+                    if (Options.FilenameFilter.Contains("*"))
+                        searchPattern = Options.FilenameFilter + ".db";
                     else
-                        searchPattern = mOptions.FilenameFilter + "*.db";
+                        searchPattern = Options.FilenameFilter + "*.db";
                 }
 
                 var filesToProcess = inputDirectory.GetFiles(searchPattern).ToList();
@@ -556,6 +585,11 @@ namespace DMSModelConfigDbUpdater
                         return false;
                 }
 
+                if (Options.ValidateColumnNamesWithDatabase)
+                {
+                    ShowValidationSummary();
+                }
+
                 return true;
             }
             catch (Exception ex)
@@ -570,14 +604,16 @@ namespace DMSModelConfigDbUpdater
             try
             {
                 Console.WriteLine();
-                Console.WriteLine("Processing " + PathUtils.CompactPathString(modelConfigDb.FullName, 80));
+                OnStatusEvent("{0} {1}",
+                    Options.ValidateColumnNamesWithDatabase ? "Validating" : "Processing",
+                    PathUtils.CompactPathString(modelConfigDb.FullName, 80));
 
                 var connectionString = "Data Source=" + modelConfigDb.FullName + "; Version=3; DateTimeFormat=Ticks; Read Only=False;";
 
                 // When calling the constructor, optionally set parseViaFramework to true if reading SqLite files located on a network share or in read-only folders
                 mDbConnectionReader = new SQLiteConnection(connectionString, true);
 
-                mCurrentConfigDB = modelConfigDb.Name;
+                CurrentConfigDB = modelConfigDb.Name;
 
                 try
                 {
@@ -594,15 +630,30 @@ namespace DMSModelConfigDbUpdater
                 if (!generalParamsLoaded)
                     return false;
 
+                if (generalParams.Parameters.Count == 0)
+                {
+                    // This model config DB does not have table general_params; ignore it
+                    if (Options.ValidateColumnNamesWithDatabase)
+                    {
+                        OnStatusEvent("Ignoring file {0} since it does not have table {1}", CurrentConfigDB, DB_TABLE_GENERAL_PARAMS);
+                        return true;
+                    }
+                }
+
                 var formFieldsLoaded = ReadFormFields(out var formFields);
 
                 if (!formFieldsLoaded)
                     return false;
 
-                if (!mOptions.PreviewUpdates && !InitializeWriter(modelConfigDb))
+                if (Options.ValidateColumnNamesWithDatabase)
+                {
+                    return ValidateColumnNames(generalParams, formFields);
+                }
+
+                if (!Options.PreviewUpdates && !InitializeWriter(modelConfigDb))
                     return false;
 
-                if (mOptions.RenameEntryPageViewAndColumns)
+                if (Options.RenameEntryPageViewAndColumns)
                 {
                     var entryPageView = RenameEntryPageView(generalParams);
 
@@ -610,7 +661,7 @@ namespace DMSModelConfigDbUpdater
                     UpdateFormFields(formFields, entryPageView);
                 }
 
-                if (mOptions.RenameListReportViewAndColumns)
+                if (Options.RenameListReportViewAndColumns)
                 {
                     var listReportView = RenameListReportView(generalParams);
                     UpdateListReportHotlinks(listReportView);
@@ -619,29 +670,29 @@ namespace DMSModelConfigDbUpdater
                     UpdateListReportPrimaryFilter(listReportView);
                 }
 
-                if (mOptions.RenameDetailReportViewAndColumns)
+                if (Options.RenameDetailReportViewAndColumns)
                 {
                     var detailReportView = RenameDetailReportView(generalParams);
                     UpdateDetailReportHotlinks(detailReportView);
                 }
 
-                if (mOptions.RenameStoredProcedures)
+                if (Options.RenameStoredProcedures)
                 {
                     RenameStoredProcedures(generalParams);
                 }
 
-                mCurrentConfigDB = string.Empty;
+                CurrentConfigDB = string.Empty;
                 return true;
             }
             catch (Exception ex)
             {
                 OnErrorEvent("Error in ProcessFile", ex);
-                mCurrentConfigDB = string.Empty;
+                CurrentConfigDB = string.Empty;
                 return false;
             }
         }
 
-        private bool ReadExternalSources(out List<BasicField> externalSources)
+        internal bool ReadExternalSources(out List<BasicField> externalSources)
         {
             externalSources = new List<BasicField>();
 
@@ -673,7 +724,7 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        private bool ReadFormFields(out List<FormFieldInfo> formFields)
+        internal bool ReadFormFields(out List<FormFieldInfo> formFields)
         {
             formFields = new List<FormFieldInfo>();
 
@@ -706,7 +757,7 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        private bool ReadFormFieldOptions(out List<BasicField> formFieldOptions)
+        internal bool ReadFormFieldOptions(out List<BasicField> formFieldOptions)
         {
             formFieldOptions = new List<BasicField>();
 
@@ -738,7 +789,7 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        private bool ReadFormFieldChoosers(out List<FormFieldChooserInfo> formFieldChoosers)
+        internal bool ReadFormFieldChoosers(out List<FormFieldChooserInfo> formFieldChoosers)
         {
             formFieldChoosers = new List<FormFieldChooserInfo>();
 
@@ -771,15 +822,20 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        private bool ReadGeneralParams(out GeneralParameters generalParams)
+        internal bool ReadGeneralParams(out GeneralParameters generalParams)
         {
             generalParams = new GeneralParameters();
 
             try
             {
+                if (!SQLiteUtilities.TableExists(mDbConnectionReader, DB_TABLE_GENERAL_PARAMS))
+                {
+                    return true;
+                }
+
                 using var dbCommand = mDbConnectionReader.CreateCommand();
 
-                dbCommand.CommandText = "SELECT name, value FROM general_params";
+                dbCommand.CommandText = "SELECT name, value FROM " + DB_TABLE_GENERAL_PARAMS;
 
                 using var reader = dbCommand.ExecuteReader();
 
@@ -864,7 +920,7 @@ namespace DMSModelConfigDbUpdater
             return primaryFilters;
         }
 
-        private bool ReadStoredProcedureArguments(out List<StoredProcArgumentInfo> storedProcedureArguments)
+        internal bool ReadStoredProcedureArguments(out List<StoredProcArgumentInfo> storedProcedureArguments)
         {
             storedProcedureArguments = new List<StoredProcArgumentInfo>();
 
@@ -1029,13 +1085,48 @@ namespace DMSModelConfigDbUpdater
 
             if (currentName.Equals(nameToUse))
             {
-                OnStatusEvent("{0,-25} {1} is already {2}", mCurrentConfigDB + ":", objectDescription, nameToUse);
+                OnStatusEvent("{0,-25} {1} is already {2}", CurrentConfigDB + ":", objectDescription, nameToUse);
                 return nameToUse;
             }
 
             UpdateGeneralParameter(generalParams, parameterType, nameToUse);
 
             return nameToUse;
+        }
+
+        private void ShowValidationSummary()
+        {
+            if (mValidationResults.Count == 0)
+            {
+                OnWarningEvent("No model config DBs were found; could not validate column names");
+            }
+
+            if (mValidationResults.Count == 1)
+                return;
+
+            var fileCountWithErrors = mValidationResults.Values.Count(item => item > 0);
+
+            Console.WriteLine();
+
+            if (fileCountWithErrors == 0)
+            {
+                OnStatusEvent("Validated column names in {0} model config DBs; no errors were found", mValidationResults.Count);
+                return;
+            }
+
+            OnWarningEvent("{0} / {1} model config DBs had column name errors",
+                fileCountWithErrors,
+                mValidationResults.Count);
+
+            foreach (var item in mValidationResults)
+            {
+                if (item.Value == 0)
+                    continue;
+
+                OnWarningEvent("{0,-25} {1} error{2}", item.Key + ":", item.Value, item.Value > 1 ? "s" : string.Empty);
+            }
+
+            Console.WriteLine();
         }
 
         /// <summary>
@@ -1141,10 +1232,10 @@ namespace DMSModelConfigDbUpdater
                     renamedFormFields.Add(formField.FieldName, formField);
                 }
 
-                if (mOptions.PreviewUpdates)
+                if (Options.PreviewUpdates)
                 {
                     OnStatusEvent(
-                        "{0,-25} Would rename {1} form field{2}", mCurrentConfigDB + ":",
+                        "{0,-25} Would rename {1} form field{2}", CurrentConfigDB + ":",
                         renamedFormFields.Count, renamedFormFields.Count == 1 ? string.Empty : "s");
 
                     return;
@@ -1162,7 +1253,7 @@ namespace DMSModelConfigDbUpdater
                 }
 
                 OnStatusEvent(
-                    "{0,-25} Renamed {1} form field{2} in 'form_fields'", mCurrentConfigDB + ":",
+                    "{0,-25} Renamed {1} form field{2} in 'form_fields'", CurrentConfigDB + ":",
                     renamedFormFields.Count, renamedFormFields.Count == 1 ? string.Empty : "s");
 
                 var updatedItems = 0;
@@ -1181,7 +1272,7 @@ namespace DMSModelConfigDbUpdater
                 }
 
                 OnStatusEvent(
-                    "{0,-25} Renamed {1} form field{2} in 'sproc_args'", mCurrentConfigDB + ":",
+                    "{0,-25} Renamed {1} form field{2} in 'sproc_args'", CurrentConfigDB + ":",
                     updatedItems, updatedItems == 1 ? string.Empty : "s");
 
                 updatedItems = 0;
@@ -1218,7 +1309,7 @@ namespace DMSModelConfigDbUpdater
                 }
 
                 OnStatusEvent(
-                    "{0,-25} Renamed {1} form field{2} in 'form_field_choosers'", mCurrentConfigDB + ":",
+                    "{0,-25} Renamed {1} form field{2} in 'form_field_choosers'", CurrentConfigDB + ":",
                     updatedItems, updatedItems == 1 ? string.Empty : "s");
 
                 updatedItems = 0;
@@ -1237,7 +1328,7 @@ namespace DMSModelConfigDbUpdater
                 }
 
                 OnStatusEvent(
-                    "{0,-25} Renamed {1} form field{2} in 'form_field_options'", mCurrentConfigDB + ":",
+                    "{0,-25} Renamed {1} form field{2} in 'form_field_options'", CurrentConfigDB + ":",
                     updatedItems, updatedItems == 1 ? string.Empty : "s");
 
                 updatedItems = 0;
@@ -1256,7 +1347,7 @@ namespace DMSModelConfigDbUpdater
                 }
 
                 OnStatusEvent(
-                    "{0,-25} Renamed {1} form field{2} in 'external_sources'", mCurrentConfigDB + ":",
+                    "{0,-25} Renamed {1} form field{2} in 'external_sources'", CurrentConfigDB + ":",
                     updatedItems, updatedItems == 1 ? string.Empty : "s");
             }
             catch (Exception ex)
@@ -1274,17 +1365,17 @@ namespace DMSModelConfigDbUpdater
             {
                 if (reportUpdate)
                 {
-                    OnStatusEvent("{0,-25} {1} is already {2}", mCurrentConfigDB + ":", generalParamsKeyName, newValue);
+                    OnStatusEvent("{0,-25} {1} is already {2}", CurrentConfigDB + ":", generalParamsKeyName, newValue);
                 }
 
                 return;
             }
 
-            if (mOptions.PreviewUpdates)
+            if (Options.PreviewUpdates)
             {
                 if (reportUpdate)
                 {
-                    OnStatusEvent("{0,-25} Would change {1} from {2} to {3}", mCurrentConfigDB + ":", generalParamsKeyName, currentValue ?? "an empty string", newValue);
+                    OnStatusEvent("{0,-25} Would change {1} from {2} to {3}", CurrentConfigDB + ":", generalParamsKeyName, currentValue ?? "an empty string", newValue);
                 }
 
                 return;
@@ -1295,7 +1386,7 @@ namespace DMSModelConfigDbUpdater
 
             // Note: escape single quotes using ''
 
-            dbCommand.CommandText = string.Format("UPDATE general_params set value = '{0}' WHERE name = '{1}'", newValue.Replace("'", "''"), generalParamsKeyName);
+            dbCommand.CommandText = string.Format("UPDATE {0} set value = '{1}' WHERE name = '{2}'", DB_TABLE_GENERAL_PARAMS, newValue.Replace("'", "''"), generalParamsKeyName);
 
             dbCommand.ExecuteNonQuery();
 
@@ -1304,7 +1395,7 @@ namespace DMSModelConfigDbUpdater
 
             if (reportUpdate)
             {
-                OnStatusEvent("{0,-25} Changed {1} from {2} to {3}", mCurrentConfigDB + ":", generalParamsKeyName, currentValue ?? "an empty string", newValue);
+                OnStatusEvent("{0,-25} Changed {1} from {2} to {3}", CurrentConfigDB + ":", generalParamsKeyName, currentValue ?? "an empty string", newValue);
             }
         }
 
@@ -1342,10 +1433,10 @@ namespace DMSModelConfigDbUpdater
             if (!saveChanges)
                 return;
 
-            if (mOptions.PreviewUpdates)
+            if (Options.PreviewUpdates)
             {
                 Console.WriteLine();
-                OnStatusEvent("Hotlink updates for {0} in {1}", sourceView, mCurrentConfigDB);
+                OnStatusEvent("Hotlink updates for {0} in {1}", sourceView, CurrentConfigDB);
             }
 
             var idFieldName = GetIdFieldName(tableName);
@@ -1361,7 +1452,7 @@ namespace DMSModelConfigDbUpdater
 
                 var nameToUse = string.IsNullOrWhiteSpace(item.NewFieldName) ? item.FieldName : item.NewFieldName;
 
-                if (mOptions.PreviewUpdates)
+                if (Options.PreviewUpdates)
                 {
                     OnStatusEvent("{0,2}: {1,-30} {2,-20} {3}", item.ID, nameToUse, item.LinkType, item.WhichArg);
                     continue;
@@ -1375,11 +1466,11 @@ namespace DMSModelConfigDbUpdater
                 updatedItems++;
             }
 
-            if (mOptions.PreviewUpdates)
+            if (Options.PreviewUpdates)
                 return;
 
             OnStatusEvent(
-                "{0,-25} Renamed {1} hotlink{2} in '{3}'", mCurrentConfigDB + ":",
+                "{0,-25} Renamed {1} hotlink{2} in '{3}'", CurrentConfigDB + ":",
                 updatedItems, updatedItems == 1 ? string.Empty : "s", sourceView);
         }
 
@@ -1518,10 +1609,10 @@ namespace DMSModelConfigDbUpdater
             if (!saveChanges)
                 return;
 
-            if (mOptions.PreviewUpdates)
+            if (Options.PreviewUpdates)
             {
                 Console.WriteLine();
-                OnStatusEvent("Primary filter updates for {0} in {1}", sourceView, mCurrentConfigDB);
+                OnStatusEvent("Primary filter updates for {0} in {1}", sourceView, CurrentConfigDB);
             }
 
             using var dbCommand = mDbConnectionWriter.CreateCommand();
@@ -1535,7 +1626,7 @@ namespace DMSModelConfigDbUpdater
 
                 var nameToUse = string.IsNullOrWhiteSpace(item.NewFieldName) ? item.FieldName : item.NewFieldName;
 
-                if (mOptions.PreviewUpdates)
+                if (Options.PreviewUpdates)
                 {
                     OnStatusEvent("{0,2}: {1,-30}", item.ID, nameToUse);
                     continue;
@@ -1547,30 +1638,30 @@ namespace DMSModelConfigDbUpdater
                 updatedItems++;
             }
 
-            if (mOptions.PreviewUpdates)
+            if (Options.PreviewUpdates)
                 return;
 
             OnStatusEvent(
-                "{0,-25} Renamed {1} primary filter{2} in '{3}'", mCurrentConfigDB + ":",
+                "{0,-25} Renamed {1} primary filter{2} in '{3}'", CurrentConfigDB + ":",
                 updatedItems, updatedItems == 1 ? string.Empty : "s", sourceView);
         }
 
-        private bool ValidateFormFieldNames()
+        private bool ValidateColumnNames(GeneralParameters generalParams, List<FormFieldInfo> formFields)
         {
             try
             {
-                throw new NotImplementedException(
-                    "Need to implement logic to " +
-                    "a) read form field names from the .db file, " +
-                    "b) look for mismatches vs. the entry view (present in the .db but not the view, or vice versa), " +
-                    "c) validate form field names in other tables, including sproc_args, form_field_choosers (including XRef), form_field_options, external sources, " +
-                    "   and general params with the post_submission_detail_id and entry_page_data_id_col parameters");
+                var validator = new ModelConfigDbValidator(this, generalParams, formFields);
+                RegisterEvents(validator);
 
-                return true;
+                var success = validator.ValidateColumnNames(out var errorCount);
+
+                mValidationResults.Add(CurrentConfigDB, errorCount);
+
+                return success;
             }
             catch (Exception ex)
             {
-                OnErrorEvent("Error in ValidateFormFieldNames", ex);
+                OnErrorEvent("Error in ValidateColumnNames", ex);
                 return false;
             }
         }
