@@ -326,8 +326,11 @@ namespace DMSModelConfigDbUpdater
                 // Validate form field names in other tables, including sproc_args, form_field_choosers (including XRef), form_field_options, external sources,
                 //    and general params with the post_submission_detail_id and entry_page_data_id_col parameters
 
+                validationCompleted.Add(ValidateFormFieldChoosers(ref errorCount));
 
+                validationCompleted.Add(ValidateFormFieldOptions(ref errorCount));
 
+                validationCompleted.Add(ValidateExternalSources(ref errorCount));
 
                 validationCompleted.Add(ValidateStoredProcedureArguments(ref errorCount));
 
@@ -354,6 +357,11 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
+        /// <summary>
+        /// Validate detail report column names vs. the source view
+        /// </summary>
+        /// <param name="errorCount"></param>
+        /// <returns>True if names were validated, false if a critical error</returns>
         private bool ValidateDetailReportColumnNames(ref int errorCount)
         {
             try
@@ -389,6 +397,34 @@ namespace DMSModelConfigDbUpdater
 
             ValidateFieldNameVsFormFields(parentDescription, field.FieldName, ref errorCount);
         }
+
+        /// <summary>
+        /// Validate external sources
+        /// </summary>
+        /// <param name="errorCount"></param>
+        /// <returns>True if names were validated, false if a critical error</returns>
+        private bool ValidateExternalSources(ref int errorCount)
+        {
+            try
+            {
+                var externalSourcesLoaded = mDbUpdater.ReadExternalSources(out var externalSources);
+                if (!externalSourcesLoaded)
+                    return true;
+
+                foreach (var externalSource in externalSources)
+                {
+                    ValidateBasicField("External source", externalSource, ref errorCount, out _);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ValidateExternalSources", ex);
+                return false;
+            }
+        }
+
         private void ValidateFieldNameVsFormFields(string parentDescription, string fieldName, ref int errorCount)
         {
             if (string.IsNullOrWhiteSpace(fieldName))
@@ -459,13 +495,18 @@ namespace DMSModelConfigDbUpdater
             errorCount++;
         }
 
-        private void ValidateFormFieldChoosers(ref int errorCount)
+        /// <summary>
+        /// Validate form field choosers
+        /// </summary>
+        /// <param name="errorCount"></param>
+        /// <returns>True if names were validated, false if a critical error</returns>
+        private bool ValidateFormFieldChoosers(ref int errorCount)
         {
             try
             {
                 var formFieldChoosersLoaded = mDbUpdater.ReadFormFieldChoosers(out var formFieldChoosers);
                 if (!formFieldChoosersLoaded)
-                    return;
+                    return true;
 
                 foreach (var formFieldChooser in formFieldChoosers)
                 {
@@ -477,13 +518,21 @@ namespace DMSModelConfigDbUpdater
                     }
                 }
 
+                return true;
             }
             catch (Exception ex)
             {
                 OnErrorEvent("Error in ValidateFormFieldChoosers", ex);
+                return false;
             }
         }
 
+        /// <summary>
+        /// Validate form field names
+        /// </summary>
+        /// <remarks>Returns false if the source table or view was not found in the database</remarks>
+        /// <param name="errorCount"></param>
+        /// <returns>True if names were validated, false if a critical error</returns>
         private bool ValidateFormFieldNames(ref int errorCount)
         {
             try
@@ -584,8 +633,6 @@ namespace DMSModelConfigDbUpdater
                     OnDebugEvent(string.Join("\n  ", ignoredColumnMessages));
                 }
 
-                ValidateFormFieldChoosers(ref errorCount);
-
                 return errorCount == 0;
             }
             catch (Exception ex)
@@ -595,6 +642,38 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
+        /// <summary>
+        /// Validate form field options
+        /// </summary>
+        /// <param name="errorCount"></param>
+        /// <returns>True if names were validated, false if a critical error</returns>
+        private bool ValidateFormFieldOptions(ref int errorCount)
+        {
+            try
+            {
+                var formFieldOptionsLoaded = mDbUpdater.ReadFormFieldOptions(out var formFieldChoosers);
+                if (!formFieldOptionsLoaded)
+                    return true;
+
+                foreach (var formFieldOption in formFieldChoosers)
+                {
+                    ValidateBasicField("Form field option", formFieldOption, ref errorCount, out _);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ValidateFormFieldOptions", ex);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Validate list report column names vs. the source view
+        /// </summary>
+        /// <param name="errorCount"></param>
+        /// <returns>True if names were validated, false if a critical error</returns>
         private bool ValidateListReportColumnNames(ref int errorCount)
         {
             try
@@ -611,6 +690,11 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
+        /// <summary>
+        /// Validate stored procedure arguments
+        /// </summary>
+        /// <param name="errorCount"></param>
+        /// <returns>True if names were validated, false if a critical error</returns>
         private bool ValidateStoredProcedureArguments(ref int errorCount)
         {
             try
