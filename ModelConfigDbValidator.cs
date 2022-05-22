@@ -296,35 +296,106 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        private bool ValidateListReportColumnNames(ref int errorCount)
+        private void ValidateFieldNameVsFormFields(string parentDescription, string fieldName, ref int errorCount)
         {
-            try
-            {
-                errorCount++;
-                errorCount--;
+            if (string.IsNullOrWhiteSpace(fieldName))
+                return;
 
-                return true;
-            }
-            catch (Exception ex)
+            var matchingFormField = string.Empty;
+
+            // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+            foreach (var formField in mFormFields)
             {
-                OnErrorEvent("Error in ValidateListReportColumnNames", ex);
-                return false;
+                if (!fieldName.Equals(formField.FieldName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                matchingFormField = formField.FieldName;
+                break;
             }
+
+            if (matchingFormField.Length > 0)
+            {
+                if (matchingFormField.Equals(fieldName))
+                    return;
+
+                OnWarningEvent(
+                    "{0,-25} {1} {2} has a mismatched case vs. the actual form field: {3}",
+                    mDbUpdater.CurrentConfigDB + ":",
+                    parentDescription,
+                    fieldName,
+                    matchingFormField);
+
+                errorCount++;
+                return;
+            }
+
+            var closestMatches = new List<string>();
+            var closestMatchDistance = int.MaxValue;
+
+            // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+            foreach (var formField in mFormFields)
+            {
+                var distance = LevenshteinDistance.GetDistance(fieldName, formField.FieldName);
+
+                if (distance < closestMatchDistance)
+                {
+                    closestMatches.Clear();
+                    closestMatches.Add(formField.FieldName);
+                    closestMatchDistance = distance;
+                }
+                else if (distance == closestMatchDistance)
+                {
+                    closestMatches.Add(formField.FieldName);
+                }
+            }
+
+            var closestMatch = closestMatches.Count switch
+            {
+                1 => "; closest match: " + closestMatches[0],
+                > 1 => "; closest matches: " + string.Join(", ", closestMatches),
+                _ => string.Empty
+            };
+
+            OnWarningEvent(
+                "{0,-25} {1} {2} does not match any of the form fields{3}",
+                mDbUpdater.CurrentConfigDB + ":",
+                parentDescription,
+                fieldName,
+                closestMatch);
+
+            errorCount++;
         }
 
-        private bool ValidateStoredProcedureArguments(ref int errorCount)
+        private void ValidateFormFieldChoosers(ref int errorCount)
         {
             try
             {
-                errorCount++;
-                errorCount--;
+                var formFieldChoosersLoaded = mDbUpdater.ReadFormFieldChoosers(out var formFieldChoosers);
+                if (!formFieldChoosersLoaded)
+                    return;
 
-                return true;
+                foreach (var formFieldChooser in formFieldChoosers)
+                {
+                    if (string.IsNullOrWhiteSpace(formFieldChooser.FieldName))
+                    {
+
+                        OnWarningEvent(
+                            "{0,-25} Form field chooser with ID {1} does not have a form field name defined",
+                            mDbUpdater.CurrentConfigDB + ":",
+                            formFieldChooser.ID);
+
+                        errorCount++;
+                        continue;
+                    }
+
+                    ValidateFieldNameVsFormFields("Form field chooser", formFieldChooser.FieldName, ref errorCount);
+
+                    ValidateFieldNameVsFormFields("Form field chooser XRef", formFieldChooser.CrossReference, ref errorCount);
+                }
             }
             catch (Exception ex)
             {
-                OnErrorEvent("Error in ValidateStoredProcedureArguments", ex);
-                return false;
+                OnErrorEvent("Error in ValidateFormFieldChoosers", ex);
             }
         }
 
@@ -334,7 +405,7 @@ namespace DMSModelConfigDbUpdater
             {
                 var entryPageTableOrView = mGeneralParams.Parameters[GeneralParameters.ParameterType.EntryPageView];
 
-                if (string.IsNullOrWhiteSpace(entryPageTableOrView))
+                if (string.IsNullOrWhiteSpace(entryPageTableOrView) || entryPageTableOrView.Equals("V_@@@_Entry"))
                     return true;
 
                 if (!GetColumnNamesInTableOrView(entryPageTableOrView, out var columnNames, out var targetDatabase))
@@ -347,6 +418,8 @@ namespace DMSModelConfigDbUpdater
 
                     return false;
                 }
+
+                var ignoredColumnMessages = new List<string>();
 
                 foreach (var formField in mFormFields)
                 {
@@ -379,7 +452,10 @@ namespace DMSModelConfigDbUpdater
                     }
 
                     if (IgnoreMissingColumn(entryPageTableOrView, formField.FieldName))
+                    {
+                        ignoredColumnMessages.Add(string.Format("Ignoring column missing from {0} since expected: {1}", entryPageTableOrView, formField.FieldName));
                         continue;
+                    }
 
                     var closestMatches = new List<string>();
                     var closestMatchDistance = int.MaxValue;
@@ -418,11 +494,50 @@ namespace DMSModelConfigDbUpdater
                     errorCount++;
                 }
 
+                if (ignoredColumnMessages.Count > 0)
+                {
+                    OnDebugEvent(string.Join("\n  ", ignoredColumnMessages));
+                }
+
+                ValidateFormFieldChoosers(ref errorCount);
+
                 return errorCount == 0;
             }
             catch (Exception ex)
             {
                 OnErrorEvent("Error in ValidateFormFieldNames", ex);
+                return false;
+            }
+        }
+
+        private bool ValidateListReportColumnNames(ref int errorCount)
+        {
+            try
+            {
+                errorCount++;
+                errorCount--;
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ValidateListReportColumnNames", ex);
+                return false;
+            }
+        }
+
+        private bool ValidateStoredProcedureArguments(ref int errorCount)
+        {
+            try
+            {
+                errorCount++;
+                errorCount--;
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ValidateStoredProcedureArguments", ex);
                 return false;
             }
         }
