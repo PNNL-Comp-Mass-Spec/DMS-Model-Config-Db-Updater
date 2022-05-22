@@ -55,6 +55,72 @@ namespace DMSModelConfigDbUpdater
                     "data_package_id",
                     "request"
                 }));
+
+            mMissingColumnsToIgnore.Add(
+                "experiment_fraction",
+                GetMissingColumnDictionary("v_experiment_fractions_entry", new List<string>
+                {
+                    "suffix",
+                    "name_search",
+                    "name_replace",
+                    "tab",
+                    "add_underscore_before_fraction_num",
+                    "request_override",
+                    "internal_standard",
+                    "postdigest_int_std",
+                    "researcher",
+                    "container",
+                    "wellplate",
+                    "well",
+                    "prep_lc_run_id"
+                }));
+
+            mMissingColumnsToIgnore.Add(
+                "param_file",
+                GetMissingColumnDictionary("v_param_file_entry", new List<string>
+                {
+                    "replace_mass_mods",
+                    "validate_unimod"
+                }));
+
+            mMissingColumnsToIgnore.Add(
+                "requested_run_group",
+                GetMissingColumnDictionary("v_requested_run_entry", new List<string>
+                {
+                    "experiment_group_id",
+                    "request_name_suffix",
+                    "type",
+                    "requester",
+                    "experiment_list",
+                    "batch_name",
+                    "batch_description",
+                    "batch_completion_date",
+                    "batch_priority",
+                    "batch_priority_justification",
+                    "batch_comment"
+                }));
+
+            mMissingColumnsToIgnore.Add(
+                "update_analysis_jobs",
+                GetMissingColumnDictionary("t_analysis_job", new List<string>
+                {
+                    "job_list",
+                    "state",
+                    "priority",
+                    "comment",
+                    "find_text",
+                    "replace_text",
+                    "assigned_processor",
+                    "associated_processor_group",
+                    "propagation_mode",
+                    // ReSharper disable StringLiteralTypo
+                    "parm_file",
+                    "settings_file",
+                    "organism",
+                    "prot_coll_name_list",
+                    "prot_coll_options_list",
+                    // ReSharper restore StringLiteralTypo
+                }));
         }
 
         private Dictionary<string, List<string>> GetMissingColumnDictionary(string tableOrView, List<string> columnsToIgnore)
