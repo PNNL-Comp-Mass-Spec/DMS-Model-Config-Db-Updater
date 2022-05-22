@@ -204,21 +204,18 @@ namespace DMSModelConfigDbUpdater
             };
         }
 
+        /// <summary>
+        /// Check whether a column name referred to by a form field is allowed to be missing from the referenced table or view
+        /// </summary>
+        /// <param name="tableOrView"></param>
+        /// <param name="columnName"></param>
+        /// <returns>True if allowed to be missing, otherwise false</returns>
         private bool IgnoreMissingColumn(string tableOrView, string columnName)
         {
             if (!mMissingColumnsToIgnore.TryGetValue(Path.GetFileNameWithoutExtension(mDbUpdater.CurrentConfigDB), out var tablesAndViews))
                 return false;
 
-            var ignoreMissingColumn = tablesAndViews.TryGetValue(tableOrView, out var columnsToIgnore) && columnsToIgnore.Contains(columnName);
-
-            if (ignoreMissingColumn)
-            {
-                ConsoleMsgUtils.ShowDebugCustom(
-                    string.Format("Ignoring column missing from {0} since expected: {1}", tableOrView, columnName),
-                    "  ", 0);
-            }
-
-            return ignoreMissingColumn;
+            return tablesAndViews.TryGetValue(tableOrView, out var columnsToIgnore) && columnsToIgnore.Contains(columnName);
         }
 
         /// <summary>
