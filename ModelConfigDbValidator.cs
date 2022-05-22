@@ -9,7 +9,7 @@ namespace DMSModelConfigDbUpdater
 {
     internal class ModelConfigDbValidator : EventNotifier
     {
-        // Ignore Spelling: citext, dbo, dms, gigasax, Levenshtein, Postgres, proteinseqs
+        // Ignore Spelling: citext, dbo, dms, gigasax, Levenshtein, Postgres, proteinseqs, wellplate
 
         /// <summary>
         /// Keys in this dictionary are database names
