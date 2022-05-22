@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
+using System.Linq;
 using PRISM;
 using PRISMDatabaseUtils;
 
@@ -315,26 +316,36 @@ namespace DMSModelConfigDbUpdater
         {
             errorCount = 0;
 
+            var validationCompleted = new List<bool>();
+
             try
             {
-                var validFormFields = ValidateFormFieldNames(ref errorCount);
+                validationCompleted.Add(ValidateFormFieldNames(ref errorCount));
 
                 // ToDo:
                 // Validate form field names in other tables, including sproc_args, form_field_choosers (including XRef), form_field_options, external sources,
                 //    and general params with the post_submission_detail_id and entry_page_data_id_col parameters
 
-                var validStoredProcedureColumns = ValidateStoredProcedureArguments(ref errorCount);
 
-                var validListReportColumns = ValidateListReportColumnNames(ref errorCount);
 
-                var validDetailReportColumns = ValidateDetailReportColumnNames(ref errorCount);
 
-                if (validFormFields && validStoredProcedureColumns && validListReportColumns && validDetailReportColumns)
-                    return true;
+                validationCompleted.Add(ValidateStoredProcedureArguments(ref errorCount));
 
-                OnWarningEvent("{0} errors found in file {1}", errorCount, mDbUpdater.CurrentConfigDB);
+                validationCompleted.Add(ValidateListReportColumnNames(ref errorCount));
 
-                return true;
+                validationCompleted.Add(ValidateDetailReportColumnNames(ref errorCount));
+
+                if (errorCount > 0)
+                {
+                    OnWarningEvent(
+                        "{0} error{1} found in file {2}",
+                        errorCount,
+                        ModelConfigDbUpdater.CheckPlural(errorCount),
+                        mDbUpdater.CurrentConfigDB);
+                }
+
+                // Return true if every item in validationCompleted is true
+                return validationCompleted.All(item => item);
             }
             catch (Exception ex)
             {
