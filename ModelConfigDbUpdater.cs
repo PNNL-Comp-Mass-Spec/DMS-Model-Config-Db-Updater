@@ -1058,7 +1058,7 @@ namespace DMSModelConfigDbUpdater
 
                 using var dbCommand = mDbConnectionReader.CreateCommand();
 
-                dbCommand.CommandText = "SELECT id, field, name FROM sproc_args";
+                dbCommand.CommandText = "SELECT id, field, name, procedure FROM sproc_args";
 
                 using var reader = dbCommand.ExecuteReader();
 
@@ -1067,8 +1067,9 @@ namespace DMSModelConfigDbUpdater
                     var id = SQLiteUtilities.GetInt32(reader, "id");
                     var formField = SQLiteUtilities.GetString(reader, "field");
                     var argumentName = SQLiteUtilities.GetString(reader, "name");
+                    var procedure = SQLiteUtilities.GetString(reader, "procedure");
 
-                    storedProcedureArguments.Add(new StoredProcArgumentInfo(id, formField, argumentName));
+                    storedProcedureArguments.Add(new StoredProcArgumentInfo(id, formField, argumentName, procedure));
                 }
 
                 return true;
