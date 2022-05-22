@@ -98,6 +98,15 @@ namespace DMSModelConfigDbUpdater
             mViewNameMapWithSchema = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// Return "s" if the count is not one, otherwise return an empty string
+        /// </summary>
+        /// <param name="itemCount"></param>
+        internal static string CheckPlural(int itemCount)
+        {
+            return itemCount == 1 ? string.Empty : "s";
+        }
+
         private bool ColumnRenamed(string viewName, string currentColumnName, out string columnNameToUse, bool snakeCaseName = false)
         {
             if (string.IsNullOrWhiteSpace(currentColumnName))
@@ -1390,7 +1399,7 @@ namespace DMSModelConfigDbUpdater
                 {
                     OnStatusEvent(
                         "{0,-25} Would rename {1} form field{2}", CurrentConfigDB + ":",
-                        renamedFormFields.Count, renamedFormFields.Count == 1 ? string.Empty : "s");
+                        renamedFormFields.Count, CheckPlural(renamedFormFields.Count));
 
                     return;
                 }
@@ -1408,7 +1417,7 @@ namespace DMSModelConfigDbUpdater
 
                 OnStatusEvent(
                     "{0,-25} Renamed {1} form field{2} in 'form_fields'", CurrentConfigDB + ":",
-                    renamedFormFields.Count, renamedFormFields.Count == 1 ? string.Empty : "s");
+                    renamedFormFields.Count, CheckPlural(renamedFormFields.Count));
 
                 var updatedItems = 0;
 
@@ -1427,7 +1436,7 @@ namespace DMSModelConfigDbUpdater
 
                 OnStatusEvent(
                     "{0,-25} Renamed {1} form field{2} in 'sproc_args'", CurrentConfigDB + ":",
-                    updatedItems, updatedItems == 1 ? string.Empty : "s");
+                    updatedItems, CheckPlural(updatedItems));
 
                 updatedItems = 0;
 
@@ -1464,7 +1473,7 @@ namespace DMSModelConfigDbUpdater
 
                 OnStatusEvent(
                     "{0,-25} Renamed {1} form field{2} in 'form_field_choosers'", CurrentConfigDB + ":",
-                    updatedItems, updatedItems == 1 ? string.Empty : "s");
+                    updatedItems, CheckPlural(updatedItems));
 
                 updatedItems = 0;
 
@@ -1483,7 +1492,7 @@ namespace DMSModelConfigDbUpdater
 
                 OnStatusEvent(
                     "{0,-25} Renamed {1} form field{2} in 'form_field_options'", CurrentConfigDB + ":",
-                    updatedItems, updatedItems == 1 ? string.Empty : "s");
+                    updatedItems, CheckPlural(updatedItems));
 
                 updatedItems = 0;
 
@@ -1502,7 +1511,7 @@ namespace DMSModelConfigDbUpdater
 
                 OnStatusEvent(
                     "{0,-25} Renamed {1} form field{2} in 'external_sources'", CurrentConfigDB + ":",
-                    updatedItems, updatedItems == 1 ? string.Empty : "s");
+                    updatedItems, CheckPlural(updatedItems));
             }
             catch (Exception ex)
             {
@@ -1625,7 +1634,7 @@ namespace DMSModelConfigDbUpdater
 
             OnStatusEvent(
                 "{0,-25} Renamed {1} hotlink{2} in '{3}'", CurrentConfigDB + ":",
-                updatedItems, updatedItems == 1 ? string.Empty : "s", sourceView);
+                updatedItems, CheckPlural(updatedItems), sourceView);
         }
 
         private void UpdateListOfDataColumns(
@@ -1797,7 +1806,7 @@ namespace DMSModelConfigDbUpdater
 
             OnStatusEvent(
                 "{0,-25} Renamed {1} primary filter{2} in '{3}'", CurrentConfigDB + ":",
-                updatedItems, updatedItems == 1 ? string.Empty : "s", sourceView);
+                updatedItems, CheckPlural(updatedItems), sourceView);
         }
 
         private bool ValidateColumnNames(GeneralParameters generalParams, List<FormFieldInfo> formFields)
