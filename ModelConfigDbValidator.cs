@@ -219,11 +219,17 @@ namespace DMSModelConfigDbUpdater
             return tablesAndViews.TryGetValue(tableOrView, out var columnsToIgnore) && columnsToIgnore.Contains(columnName);
         }
 
+        private bool IsOperationsProcedure(string procedureName)
+        {
+            return mGeneralParams.Parameters.TryGetValue(GeneralParameters.ParameterType.OperationsSP, out var operationsProcedure) &&
+                   operationsProcedure.Equals(procedureName, StringComparison.OrdinalIgnoreCase);
+        }
+
         /// <summary>
         /// Query the Information_Schema view to obtain the columns for all tables or views in the target database
         /// </summary>
         /// <param name="databaseName"></param>
-        /// <returns></returns>
+        /// <returns>True if successful, false if an error</returns>
         private bool RetrieveDatabaseColumnInfo(string databaseName)
         {
             try
@@ -382,11 +388,22 @@ namespace DMSModelConfigDbUpdater
         {
             if (string.IsNullOrWhiteSpace(field.FieldName))
             {
-                OnWarningEvent(
-                    "{0,-25} {1} with ID {2} does not have a form field name defined",
-                    mDbUpdater.CurrentConfigDB + ":",
-                    parentDescription,
-                    field.ID);
+                if (field is StoredProcArgumentInfo storedProcedureArgument)
+                {
+                    OnWarningEvent(
+                        "{0,-25} {1} {2} does not have a form field name defined",
+                        mDbUpdater.CurrentConfigDB + ":",
+                        parentDescription,
+                        storedProcedureArgument.ArgumentName);
+                }
+                else
+                {
+                    OnWarningEvent(
+                        "{0,-25} {1} with ID {2} does not have a form field name defined",
+                        mDbUpdater.CurrentConfigDB + ":",
+                        parentDescription,
+                        field.ID);
+                }
 
                 errorCount++;
                 emptyFieldName = true;
@@ -455,6 +472,12 @@ namespace DMSModelConfigDbUpdater
                     matchingFormField);
 
                 errorCount++;
+                return;
+            }
+
+            if (fieldName.Equals("<local>"))
+            {
+                // Stored procedure arguments often have field name <local>
                 return;
             }
 
@@ -699,8 +722,18 @@ namespace DMSModelConfigDbUpdater
         {
             try
             {
-                errorCount++;
-                errorCount--;
+                var storedProcedureArgsLoaded = mDbUpdater.ReadStoredProcedureArguments(out var storedProcedureArguments);
+                if (!storedProcedureArgsLoaded)
+                    return true;
+
+                // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+                foreach (var procedureArgument in storedProcedureArguments)
+                {
+                    if (IsOperationsProcedure(procedureArgument.ProcedureName))
+                        continue;
+
+                    ValidateBasicField("Stored procedure argument", procedureArgument, ref errorCount, out _);
+                }
 
                 return true;
             }
