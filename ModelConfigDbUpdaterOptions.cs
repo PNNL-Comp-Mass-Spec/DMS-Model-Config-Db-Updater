@@ -51,6 +51,10 @@ namespace DMSModelConfigDbUpdater
             HelpText = "When true, show changes that would be made, but do not update any files")]
         public bool PreviewUpdates { get; set; }
 
+        [Option("QuietMode", "Quiet", "Q", HelpShowsDefault = true,
+            HelpText = "When true, show fewer messages")]
+        public bool QuietMode { get; set; }
+
         [Option("RenameListReportView", "RenameList", HelpShowsDefault = true,
             HelpText = "When true, rename the list report view and columns\n" +
                        "View renames will either be based on data loaded from the table name map file, or by converting to snake case\n" +
@@ -131,6 +135,8 @@ namespace DMSModelConfigDbUpdater
                 }
 
                 Console.WriteLine(" {0,-30} {1}", "Preview Updates:", PreviewUpdates);
+
+                Console.WriteLine(" {0,-30} {1}", "Quiet Mode:", QuietMode);
 
                 Console.WriteLine(" {0,-40} {1}", "Rename List Report View and Columns:", RenameListReportViewAndColumns);
 

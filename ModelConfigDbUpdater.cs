@@ -603,10 +603,13 @@ namespace DMSModelConfigDbUpdater
         {
             try
             {
-                Console.WriteLine();
-                OnStatusEvent("{0} {1}",
-                    Options.ValidateColumnNamesWithDatabase ? "Validating" : "Processing",
-                    PathUtils.CompactPathString(modelConfigDb.FullName, 80));
+                if (!Options.QuietMode)
+                {
+                    ShowMessage();
+                    ShowMessage("{0} {1}",
+                        Options.ValidateColumnNamesWithDatabase ? "Validating" : "Processing",
+                        PathUtils.CompactPathString(modelConfigDb.FullName, 80));
+                }
 
                 var connectionString = "Data Source=" + modelConfigDb.FullName + "; Version=3; DateTimeFormat=Ticks; Read Only=False;";
 
