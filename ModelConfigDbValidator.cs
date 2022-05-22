@@ -370,6 +370,25 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
+        private void ValidateBasicField(string parentDescription, BasicField field, ref int errorCount, out bool emptyFieldName)
+        {
+            if (string.IsNullOrWhiteSpace(field.FieldName))
+            {
+                OnWarningEvent(
+                    "{0,-25} {1} with ID {2} does not have a form field name defined",
+                    mDbUpdater.CurrentConfigDB + ":",
+                    parentDescription,
+                    field.ID);
+
+                errorCount++;
+                emptyFieldName = true;
+                return;
+            }
+
+            emptyFieldName = false;
+
+            ValidateFieldNameVsFormFields(parentDescription, field.FieldName, ref errorCount);
+        }
         private void ValidateFieldNameVsFormFields(string parentDescription, string fieldName, ref int errorCount)
         {
             if (string.IsNullOrWhiteSpace(fieldName))
@@ -450,22 +469,14 @@ namespace DMSModelConfigDbUpdater
 
                 foreach (var formFieldChooser in formFieldChoosers)
                 {
-                    if (string.IsNullOrWhiteSpace(formFieldChooser.FieldName))
+                    ValidateBasicField("Form field chooser", formFieldChooser, ref errorCount, out var emptyFieldName);
+
+                    if (!emptyFieldName)
                     {
-
-                        OnWarningEvent(
-                            "{0,-25} Form field chooser with ID {1} does not have a form field name defined",
-                            mDbUpdater.CurrentConfigDB + ":",
-                            formFieldChooser.ID);
-
-                        errorCount++;
-                        continue;
+                        ValidateFieldNameVsFormFields("Form field chooser XRef", formFieldChooser.CrossReference, ref errorCount);
                     }
-
-                    ValidateFieldNameVsFormFields("Form field chooser", formFieldChooser.FieldName, ref errorCount);
-
-                    ValidateFieldNameVsFormFields("Form field chooser XRef", formFieldChooser.CrossReference, ref errorCount);
                 }
+
             }
             catch (Exception ex)
             {
