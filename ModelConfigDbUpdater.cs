@@ -181,8 +181,10 @@ namespace DMSModelConfigDbUpdater
             {
                 var resultsFilePath = GetValidateResultsFilePath(inputDirectory.FullName, Options.ValidateResultsFileName);
 
-                mValidationResultsWriter = new StreamWriter(new FileStream(resultsFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
-                mValidationResultsWriter.AutoFlush = true;
+                mValidationResultsWriter = new StreamWriter(new FileStream(resultsFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
+                {
+                    AutoFlush = true
+                };
 
                 return true;
             }
