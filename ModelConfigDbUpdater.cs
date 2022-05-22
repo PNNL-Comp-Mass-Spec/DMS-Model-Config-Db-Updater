@@ -511,7 +511,7 @@ namespace DMSModelConfigDbUpdater
         }
 
         /// <summary>
-        /// Handle a validation results debug message
+        /// Handle a validation result debug message
         /// </summary>
         /// <param name="message"></param>
         private void OnValidationResultsDebugEvent(string message)
@@ -523,7 +523,7 @@ namespace DMSModelConfigDbUpdater
         }
 
         /// <summary>
-        /// Handle a validation results error message
+        /// Handle a validation result error message
         /// </summary>
         /// <param name="message"></param>
         /// <param name="ex"></param>
@@ -541,12 +541,22 @@ namespace DMSModelConfigDbUpdater
         }
 
         /// <summary>
-        /// Handle a validation results message or warning
+        /// Handle a validation result message
         /// </summary>
         /// <param name="message"></param>
-        private void OnValidationResultsEvent(string message)
+        private void OnValidationResultsStatusEvent(string message)
         {
             mValidationResultsWriter?.WriteLine(message);
+        }
+
+        /// <summary>
+        /// Handle a validation result warning
+        /// </summary>
+        /// <param name="message"></param>
+        private void OnValidationResultsWarningEvent(string message)
+        {
+            mValidationResultsWriter?.WriteLine(message);
+            mValidationResultsWriter?.WriteLine();
         }
 
         private string PossiblyAddSchema(GeneralParameters generalParams, string objectName)
@@ -1221,7 +1231,7 @@ namespace DMSModelConfigDbUpdater
 
             if (Options.SaveValidateResultsToFile)
             {
-                OnValidationResultsEvent(formattedMessage);
+                OnValidationResultsStatusEvent(formattedMessage);
             }
         }
 
@@ -1236,7 +1246,7 @@ namespace DMSModelConfigDbUpdater
 
             if (Options.SaveValidateResultsToFile)
             {
-                OnValidationResultsEvent(formattedMessage);
+                OnValidationResultsWarningEvent(formattedMessage);
             }
         }
 
@@ -1800,9 +1810,9 @@ namespace DMSModelConfigDbUpdater
                 if (Options.SaveValidateResultsToFile)
                 {
                     validator.DebugEvent += OnValidationResultsDebugEvent;
-                    validator.StatusEvent += OnValidationResultsEvent;
+                    validator.StatusEvent += OnValidationResultsStatusEvent;
                     validator.ErrorEvent += OnValidationResultsErrorEvent;
-                    validator.WarningEvent += OnValidationResultsEvent;
+                    validator.WarningEvent += OnValidationResultsWarningEvent;
                 }
 
                 var success = validator.ValidateColumnNames(out var errorCount);
