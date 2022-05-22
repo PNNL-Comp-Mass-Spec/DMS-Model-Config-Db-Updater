@@ -4,6 +4,7 @@ using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using JetBrains.Annotations;
 using PRISM;
 using TableColumnNameMapContainer;
 
@@ -46,6 +47,11 @@ namespace DMSModelConfigDbUpdater
         /// Values are the number of errors found
         /// </summary>
         private readonly Dictionary<string, int> mValidationResults = new();
+
+        /// <summary>
+        /// Validation results file writer
+        /// </summary>
+        private StreamWriter mValidationResultsWriter;
 
         /// <summary>
         /// Keys in this dictionary are view names, as read from the tab-delimited text file; names should include the schema and may be quoted
@@ -160,6 +166,24 @@ namespace DMSModelConfigDbUpdater
             return updatedName;
         }
 
+        private bool CreateValidationResultsFile(FileSystemInfo inputDirectory)
+        {
+            try
+            {
+                var resultsFilePath = GetValidateResultsFilePath(inputDirectory.FullName, Options.ValidateResultsFileName);
+
+                mValidationResultsWriter = new StreamWriter(new FileStream(resultsFilePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
+                mValidationResultsWriter.AutoFlush = true;
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error creating the validation results file", ex);
+                return false;
+            }
+        }
+
         private bool FormFieldRenamed(IReadOnlyDictionary<string, FormFieldInfo> renamedFormFields, string formFieldName, out string newFormFieldName)
         {
             if (string.IsNullOrWhiteSpace(formFieldName))
@@ -244,6 +268,33 @@ namespace DMSModelConfigDbUpdater
             var periodIndex = objectName.IndexOf('.');
 
             return periodIndex > 0 ? objectName.Substring(0, periodIndex) : "public";
+        }
+
+        /// <summary>
+        /// Get the validation results file path
+        /// </summary>
+        /// <param name="inputDirectoryPath"></param>
+        /// <param name="validationResultsFileNameOrPath"></param>
+        /// <returns>The full path to the validation results file</returns>
+        public static string GetValidateResultsFilePath(string inputDirectoryPath, string validationResultsFileNameOrPath)
+        {
+            if (string.IsNullOrWhiteSpace(inputDirectoryPath))
+                inputDirectoryPath = ".";
+
+            if (string.IsNullOrWhiteSpace(validationResultsFileNameOrPath))
+            {
+                return Path.Combine(inputDirectoryPath, "ValidationResults.txt");
+            }
+
+            if (validationResultsFileNameOrPath.StartsWith(@".\"))
+            {
+                // Save in the working directory
+                return validationResultsFileNameOrPath;
+            }
+
+            return Path.IsPathRooted(validationResultsFileNameOrPath)
+                ? validationResultsFileNameOrPath
+                : Path.Combine(inputDirectoryPath, validationResultsFileNameOrPath);
         }
 
         private bool InitializeWriter(FileInfo modelConfigDb)
@@ -459,6 +510,45 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
+        /// <summary>
+        /// Handle a validation results debug message
+        /// </summary>
+        /// <param name="message"></param>
+        private void OnValidationResultsDebugEvent(string message)
+        {
+            mValidationResultsWriter?.WriteLine("  " + message);
+
+            if (Options.QuietMode)
+                mValidationResultsWriter?.WriteLine();
+        }
+
+        /// <summary>
+        /// Handle a validation results error message
+        /// </summary>
+        /// <param name="message"></param>
+        /// <param name="ex"></param>
+        private void OnValidationResultsErrorEvent(string message, Exception ex)
+        {
+            if (!message.StartsWith("Error", StringComparison.OrdinalIgnoreCase))
+                message = "Error: " + message;
+
+            mValidationResultsWriter?.WriteLine(message);
+            mValidationResultsWriter?.WriteLine();
+
+            mValidationResultsWriter?.WriteLine(StackTraceFormatter.GetExceptionStackTraceMultiLine(ex));
+
+            mValidationResultsWriter?.WriteLine();
+        }
+
+        /// <summary>
+        /// Handle a validation results message or warning
+        /// </summary>
+        /// <param name="message"></param>
+        private void OnValidationResultsEvent(string message)
+        {
+            mValidationResultsWriter?.WriteLine(message);
+        }
+
         private string PossiblyAddSchema(GeneralParameters generalParams, string objectName)
         {
             if (!Options.UsePostgresSchema)
@@ -564,6 +654,7 @@ namespace DMSModelConfigDbUpdater
                     OnWarningEvent(
                         "Did not find any files matching '{0}' in {1}",
                         searchPattern, PathUtils.CompactPathString(inputDirectory.FullName, 80));
+
                     return true;
                 }
 
@@ -575,6 +666,13 @@ namespace DMSModelConfigDbUpdater
                     filesToProcess.Count > 1 ? "s" : string.Empty,
                     searchPattern,
                     PathUtils.CompactPathString(inputDirectory.FullName, 80));
+
+                if (Options.ValidateColumnNamesWithDatabase &&
+                    Options.SaveValidateResultsToFile &&
+                    !CreateValidationResultsFile(inputDirectory))
+                {
+                    return false;
+                }
 
                 // ReSharper disable once ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
                 foreach (var modelConfigDb in filesToProcess)
@@ -590,10 +688,17 @@ namespace DMSModelConfigDbUpdater
                     ShowValidationSummary();
                 }
 
+                if (Options.ValidateColumnNamesWithDatabase && Options.SaveValidateResultsToFile)
+                {
+                    mValidationResultsWriter.Close();
+                }
+
                 return true;
             }
             catch (Exception ex)
             {
+                mValidationResultsWriter?.Close();
+
                 OnErrorEvent("Error in ProcessInputDirectory", ex);
                 return false;
             }
@@ -638,7 +743,7 @@ namespace DMSModelConfigDbUpdater
                     // This model config DB does not have table general_params; ignore it
                     if (Options.ValidateColumnNamesWithDatabase)
                     {
-                        OnStatusEvent("Ignoring file {0} since it does not have table {1}", CurrentConfigDB, DB_TABLE_GENERAL_PARAMS);
+                        ShowMessage("Ignoring file {0} since it does not have table {1}", CurrentConfigDB, DB_TABLE_GENERAL_PARAMS);
                         return true;
                     }
                 }
@@ -1097,6 +1202,44 @@ namespace DMSModelConfigDbUpdater
             return nameToUse;
         }
 
+        /// <summary>
+        /// Add a blank link to the console output and optionally to the validation results file
+        /// </summary>
+        protected void ShowMessage()
+        {
+            ShowMessage(string.Empty);
+        }
+
+        /// <summary>Report a status message</summary>
+        /// <param name="format">Status message format string</param>
+        /// <param name="args">string format arguments</param>
+        [StringFormatMethod("format")]
+        protected void ShowMessage(string format, params object[] args)
+        {
+            var formattedMessage = string.Format(format, args);
+            OnStatusEvent(formattedMessage);
+
+            if (Options.SaveValidateResultsToFile)
+            {
+                OnValidationResultsEvent(formattedMessage);
+            }
+        }
+
+        /// <summary>Report a warning message</summary>
+        /// <param name="format">Status message format string</param>
+        /// <param name="args">string format arguments</param>
+        [StringFormatMethod("format")]
+        protected void ShowWarning(string format, params object[] args)
+        {
+            var formattedMessage = string.Format(format, args);
+            OnWarningEvent(formattedMessage);
+
+            if (Options.SaveValidateResultsToFile)
+            {
+                OnValidationResultsEvent(formattedMessage);
+            }
+        }
+
         private void ShowValidationSummary()
         {
             if (mValidationResults.Count == 0)
@@ -1109,27 +1252,25 @@ namespace DMSModelConfigDbUpdater
 
             var fileCountWithErrors = mValidationResults.Values.Count(item => item > 0);
 
-            Console.WriteLine();
+            ShowMessage();
 
             if (fileCountWithErrors == 0)
             {
-                OnStatusEvent("Validated column names in {0} model config DBs; no errors were found", mValidationResults.Count);
+                ShowMessage("Validated column names in {0} model config DBs; no errors were found", mValidationResults.Count);
                 return;
             }
 
-            OnWarningEvent("{0} / {1} model config DBs had column name errors",
-                fileCountWithErrors,
-                mValidationResults.Count);
+            ShowWarning("{0} / {1} model config DBs had column name or form field name errors", fileCountWithErrors, mValidationResults.Count);
 
             foreach (var item in mValidationResults)
             {
                 if (item.Value == 0)
                     continue;
 
-                OnWarningEvent("{0,-25} {1} error{2}", item.Key + ":", item.Value, item.Value > 1 ? "s" : string.Empty);
+                ShowWarning("{0,-25} {1} error{2}", item.Key + ":", item.Value, item.Value > 1 ? "s" : string.Empty);
             }
 
-            Console.WriteLine();
+            ShowMessage();
         }
 
         /// <summary>
@@ -1211,8 +1352,8 @@ namespace DMSModelConfigDbUpdater
                 if (!storedProcedureArgsLoaded)
                     return;
 
-                var formFieldsLoaded = ReadFormFieldChoosers(out var formFieldChoosers);
-                if (!formFieldsLoaded)
+                var formFieldChoosersLoaded = ReadFormFieldChoosers(out var formFieldChoosers);
+                if (!formFieldChoosersLoaded)
                     return;
 
                 var formFieldOptionsLoaded = ReadFormFieldOptions(out var formFieldOptions);
@@ -1655,6 +1796,14 @@ namespace DMSModelConfigDbUpdater
             {
                 var validator = new ModelConfigDbValidator(this, generalParams, formFields);
                 RegisterEvents(validator);
+
+                if (Options.SaveValidateResultsToFile)
+                {
+                    validator.DebugEvent += OnValidationResultsDebugEvent;
+                    validator.StatusEvent += OnValidationResultsEvent;
+                    validator.ErrorEvent += OnValidationResultsErrorEvent;
+                    validator.WarningEvent += OnValidationResultsEvent;
+                }
 
                 var success = validator.ValidateColumnNames(out var errorCount);
 

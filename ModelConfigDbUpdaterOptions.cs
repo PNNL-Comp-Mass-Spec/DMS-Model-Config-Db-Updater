@@ -12,7 +12,7 @@ namespace DMSModelConfigDbUpdater
         /// <summary>
         /// Program date
         /// </summary>
-        public const string PROGRAM_DATE = "May 20, 2022";
+        public const string PROGRAM_DATE = "May 21, 2022";
 
         [Option("InputDirectory", "Input", "I", ArgPosition = 1, HelpShowsDefault = false, IsInputFilePath = false,
             HelpText = "Directory with the DMS model config database files to update\n" +
@@ -86,6 +86,14 @@ namespace DMSModelConfigDbUpdater
                        "When this is true, the name map files are not loaded, and no object renaming is performed")]
         public bool ValidateColumnNamesWithDatabase { get; set; }
 
+        [Option("SaveValidationResults", "WriteResults", "Save", HelpShowsDefault = true,
+            HelpText = "When true, save the validation results to a text file")]
+        public bool SaveValidateResultsToFile { get; set; }
+
+        [Option("ValidationResultsFileName", "ResultsFile", HelpShowsDefault = true,
+            HelpText = "Validation results file name or path")]
+        public string ValidateResultsFileName { get; set; } = "ValidationResults.txt";
+
         /// <summary>
         /// Constructor
         /// </summary>
@@ -148,6 +156,19 @@ namespace DMSModelConfigDbUpdater
             }
 
             Console.WriteLine(" {0,-40} {1}", "Validate Column Names with DB:", ValidateColumnNamesWithDatabase);
+
+            if (ValidateColumnNamesWithDatabase)
+            {
+                Console.WriteLine(" {0,-40} {1}", "Save Validation Results to File:", SaveValidateResultsToFile);
+
+                if (SaveValidateResultsToFile)
+                {
+                    var resultsFile = new FileInfo(ModelConfigDbUpdater.GetValidateResultsFilePath(InputDirectory, ValidateResultsFileName));
+
+                    Console.WriteLine(" {0,-40} {1}", "Validation Results File:", PathUtils.CompactPathString(resultsFile.FullName, 80));
+                }
+            }
+
             Console.WriteLine();
         }
 
