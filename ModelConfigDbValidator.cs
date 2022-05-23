@@ -621,6 +621,12 @@ namespace DMSModelConfigDbUpdater
                         continue;
                     }
 
+                    if (formField.Type.Equals("hidden"))
+                    {
+                        ignoredColumnMessages.Add(string.Format("Ignoring column missing from {0} since a hidden field: {1}", entryPageTableOrView, formField.FieldName));
+                        continue;
+                    }
+
                     var closestMatches = new List<string>();
                     var closestMatchDistance = int.MaxValue;
 

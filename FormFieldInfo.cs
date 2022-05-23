@@ -12,16 +12,23 @@
         /// </summary>
         public string NewFieldName { get; set; }
 
-        public FormFieldInfo(int id, string formFieldName, string label) : base (id, formFieldName)
+        /// <summary>
+        /// Form field type
+        /// </summary>
+        public string Type { get; }
+
         /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="id"></param>
         /// <param name="formFieldName"></param>
         /// <param name="label"></param>
+        /// <param name="type"></param>
+        public FormFieldInfo(int id, string formFieldName, string label, string type) : base (id, formFieldName)
         {
             Label = label;
             NewFieldName = string.Empty;
+            Type = type;
         }
 
         /// <summary>

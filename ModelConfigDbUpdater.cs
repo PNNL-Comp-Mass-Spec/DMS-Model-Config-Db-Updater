@@ -867,7 +867,7 @@ namespace DMSModelConfigDbUpdater
 
                 using var dbCommand = mDbConnectionReader.CreateCommand();
 
-                dbCommand.CommandText = "SELECT id, name, label FROM form_fields";
+                dbCommand.CommandText = "SELECT id, name, label, type FROM form_fields";
 
                 using var reader = dbCommand.ExecuteReader();
 
@@ -876,8 +876,9 @@ namespace DMSModelConfigDbUpdater
                     var id = SQLiteUtilities.GetInt32(reader, "id");
                     var formField = SQLiteUtilities.GetString(reader, "name");
                     var label = SQLiteUtilities.GetString(reader, "label");
+                    var type = SQLiteUtilities.GetString(reader, "type");
 
-                    formFields.Add(new FormFieldInfo(id, formField, label));
+                    formFields.Add(new FormFieldInfo(id, formField, label, type));
                 }
 
                 return true;
