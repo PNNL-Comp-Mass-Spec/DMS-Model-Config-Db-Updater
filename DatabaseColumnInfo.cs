@@ -58,7 +58,8 @@ namespace DMSModelConfigDbUpdater
         public SortedSet<string> GetColumnsForTableOrView(string schemaName, string tableOrViewName)
         {
             // First try to match by schema name and table or view name
-            if (TableAndViewsBySchema.TryGetValue(schemaName, out var tablesAndViewsForSchema) &&
+            if (!string.IsNullOrWhiteSpace(schemaName) &&
+                TableAndViewsBySchema.TryGetValue(schemaName, out var tablesAndViewsForSchema) &&
                 tablesAndViewsForSchema.TryGetValue(tableOrViewName, out var columnNamesExactMatch))
             {
                 return columnNamesExactMatch;
