@@ -482,9 +482,15 @@ namespace DMSModelConfigDbUpdater
                 return;
             }
 
-            if (fieldName.Equals("<local>"))
+            if (fieldName.Equals("<local>") || fieldName.Equals("infoOnly", StringComparison.OrdinalIgnoreCase))
             {
-                // Stored procedure arguments often have field name <local>
+                // Ignore arguments named <local> and infoOnly for stored procedure arguments
+                return;
+            }
+
+            if (mDbUpdater.CurrentConfigDB.Equals("requested_run_batch_blocking.db") && fieldName.Equals("itemList"))
+            {
+                // This is a parameter on stored procedure GetRequestedRunParametersAndFactors; skip validation
                 return;
             }
 
@@ -738,6 +744,25 @@ namespace DMSModelConfigDbUpdater
                 var storedProcedureArgsLoaded = mDbUpdater.ReadStoredProcedureArguments(out var storedProcedureArguments);
                 if (!storedProcedureArgsLoaded)
                     return true;
+
+                if (mDbUpdater.CurrentConfigDB.Equals("file_attachment.db") ||
+                    mDbUpdater.CurrentConfigDB.Equals("grid.db") ||
+                    mDbUpdater.CurrentConfigDB.Equals("protein_collection_members.db") ||
+                    mDbUpdater.CurrentConfigDB.Equals("requested_run_admin.db") ||
+                    mDbUpdater.CurrentConfigDB.Equals("run_op_logs.db"))
+                {
+                    // Several model config DBs should have one or more stored procedures defined, but no form fields
+
+                    if (mFormFields.Count == 0 && storedProcedureArguments.Count > 0)
+                    {
+                        Console.WriteLine();
+                        OnStatusEvent(
+                            "Skipping validation of stored procedure arguments for {0} since this page family does not have form fields",
+                            mDbUpdater.CurrentConfigDB);
+
+                        return true;
+                    }
+                }
 
                 // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
                 foreach (var procedureArgument in storedProcedureArguments)

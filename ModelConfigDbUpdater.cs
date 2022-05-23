@@ -15,7 +15,7 @@ namespace DMSModelConfigDbUpdater
     /// </summary>
     public class ModelConfigDbUpdater : EventNotifier
     {
-        // Ignore Spelling: dms, dpkg, hotlink, hotlinks, idx, mc, ont, Postgres, sw
+        // Ignore Spelling: dms, dpkg, hotlink, hotlinks, idx, mc, ont, Postgres, sw, validator
 
         internal const string DB_TABLE_DETAIL_REPORT_HOTLINKS = "detail_report_hotlinks";
 
@@ -561,6 +561,9 @@ namespace DMSModelConfigDbUpdater
         private void OnValidationResultsStatusEvent(string message)
         {
             mValidationResultsWriter?.WriteLine(message);
+
+            if (message.StartsWith("Skipping validation of stored procedure arguments"))
+                mValidationResultsWriter?.WriteLine();
         }
 
         /// <summary>
