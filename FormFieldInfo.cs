@@ -2,11 +2,23 @@
 {
     internal class FormFieldInfo : BasicField
     {
+        /// <summary>
+        /// Form field label
+        /// </summary>
         public string Label { get; }
 
+        /// <summary>
+        /// New form field name
+        /// </summary>
         public string NewFieldName { get; set; }
 
         public FormFieldInfo(int id, string formFieldName, string label) : base (id, formFieldName)
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="formFieldName"></param>
+        /// <param name="label"></param>
         {
             Label = label;
             NewFieldName = string.Empty;

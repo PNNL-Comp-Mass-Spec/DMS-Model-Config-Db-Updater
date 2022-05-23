@@ -10,6 +10,9 @@ using TableColumnNameMapContainer;
 
 namespace DMSModelConfigDbUpdater
 {
+    /// <summary>
+    /// Model config DB updater and validator
+    /// </summary>
     public class ModelConfigDbUpdater : EventNotifier
     {
         // Ignore Spelling: dms, dpkg, hotlink, hotlinks, idx, mc, ont, Postgres, sw

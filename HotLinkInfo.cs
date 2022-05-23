@@ -22,6 +22,13 @@
         /// </summary>
         public string WhichArg { get; set; }
 
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="fieldName"></param>
+        /// <param name="linkType"></param>
+        /// <param name="whichArg"></param>
         public HotLinkInfo(int id, string fieldName, string linkType, string whichArg) : base(id, fieldName)
         {
             LinkType = linkType;

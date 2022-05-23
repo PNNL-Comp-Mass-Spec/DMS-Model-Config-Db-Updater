@@ -2,8 +2,17 @@
 {
     internal class FormFieldChooserInfo : BasicField
     {
+        /// <summary>
+        /// Chooser cross reference
+        /// </summary>
         public string CrossReference { get; }
 
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="formFieldName"></param>
+        /// <param name="crossReference"></param>
         public FormFieldChooserInfo(int id, string formFieldName, string crossReference) : base(id, formFieldName)
         {
             CrossReference = crossReference;

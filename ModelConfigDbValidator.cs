@@ -24,6 +24,10 @@ namespace DMSModelConfigDbUpdater
 
         private readonly GeneralParameters mGeneralParams;
 
+        /// <summary>
+        /// Keys in this dictionary are model config file names (without the file extension)
+        /// Values are dictionaries where keys are source view names and values are a list of known missing columns
+        /// </summary>
         private readonly Dictionary<string, Dictionary<string, List<string>>> mMissingColumnsToIgnore;
 
         private readonly ModelConfigDbUpdaterOptions mOptions;
@@ -46,6 +50,9 @@ namespace DMSModelConfigDbUpdater
             DefineMissingColumnsToIgnore();
         }
 
+        /// <summary>
+        /// Define form field names that do not need to correspond to a column in the source view
+        /// </summary>
         private void DefineMissingColumnsToIgnore()
         {
             mMissingColumnsToIgnore.Add(

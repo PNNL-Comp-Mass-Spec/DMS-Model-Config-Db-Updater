@@ -6,6 +6,9 @@ namespace DMSModelConfigDbUpdater
 {
     internal class DatabaseColumnInfo : EventNotifier
     {
+        /// <summary>
+        /// Database name
+        /// </summary>
         public string DatabaseName { get; }
 
         /// <summary>
@@ -25,6 +28,12 @@ namespace DMSModelConfigDbUpdater
             TableAndViewsBySchema = new Dictionary<string, Dictionary<string, SortedSet<string>>>(StringComparer.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// Add database table or view
+        /// </summary>
+        /// <param name="schemaName"></param>
+        /// <param name="tableOrViewName"></param>
+        /// <param name="columnNames"></param>
         public void AddTableOrView(string schemaName, string tableOrViewName, SortedSet<string> columnNames)
         {
             if (TableAndViewsBySchema.TryGetValue(schemaName, out var tablesAndViews))
@@ -39,6 +48,13 @@ namespace DMSModelConfigDbUpdater
             });
         }
 
+        /// <summary>
+        /// Get columns in database table or view
+        /// </summary>
+        /// <remarks>First looks for a match using the schema; if no match, looks for the first match in any schema</remarks>
+        /// <param name="schemaName"></param>
+        /// <param name="tableOrViewName"></param>
+        /// <returns>List of columns</returns>
         public SortedSet<string> GetColumnsForTableOrView(string schemaName, string tableOrViewName)
         {
             // First try to match by schema name and table or view name

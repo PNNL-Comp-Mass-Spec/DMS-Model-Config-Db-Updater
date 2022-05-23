@@ -5,6 +5,9 @@ namespace DMSModelConfigDbUpdater
 {
     internal class GeneralParameters
     {
+        /// <summary>
+        /// General parameter types
+        /// </summary>
         public enum ParameterType
         {
             DatabaseGroup = 0,
@@ -23,12 +26,24 @@ namespace DMSModelConfigDbUpdater
             OperationsSP = 13
         }
 
+        /// <summary>
+        /// Form field descriptions
+        /// </summary>
         public Dictionary<ParameterType, string> FieldDescriptions { get; }
 
+        /// <summary>
+        /// Form field names
+        /// </summary>
         public Dictionary<ParameterType, string> FieldNames { get; }
 
+        /// <summary>
+        /// General parameter values
+        /// </summary>
         public Dictionary<ParameterType, string> Parameters { get; }
 
+        /// <summary>
+        /// Constructor
+        /// </summary>
         public GeneralParameters()
         {
             Parameters = new Dictionary<ParameterType, string>();
