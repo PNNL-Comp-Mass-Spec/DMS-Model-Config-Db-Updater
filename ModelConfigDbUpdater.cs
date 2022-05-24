@@ -223,7 +223,7 @@ namespace DMSModelConfigDbUpdater
         /// <param name="fieldName"></param>
         /// <param name="prefix"></param>
         /// <returns>Name without any initial plus signs</returns>
-        private string GetCleanFieldName(string fieldName, out string prefix)
+        internal string GetCleanFieldName(string fieldName, out string prefix)
         {
             var match = mPlusSignMatcher.Match(fieldName);
 
@@ -999,13 +999,13 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        private List<HotLinkInfo> ReadHotlinks(string tableName)
+        internal List<HotLinkInfo> ReadHotlinks(string tableName)
         {
-            var hotLinks = new List<HotLinkInfo>();
+            var hotlinks = new List<HotLinkInfo>();
 
             if (!SQLiteUtilities.TableExists(mDbConnectionReader, tableName))
             {
-                return hotLinks;
+                return hotlinks;
             }
 
             var idFieldName = GetIdFieldName(tableName);
@@ -1023,10 +1023,10 @@ namespace DMSModelConfigDbUpdater
                 var linkType = SQLiteUtilities.GetString(reader, "LinkType");
                 var whichArg = SQLiteUtilities.GetString(reader, "WhichArg");
 
-                hotLinks.Add(new HotLinkInfo(id, fieldName, linkType, whichArg));
+                hotlinks.Add(new HotLinkInfo(id, fieldName, linkType, whichArg));
             }
 
-            return hotLinks;
+            return hotlinks;
         }
 
         private List<PrimaryFilterInfo> ReadPrimaryFilters(string tableName)
@@ -1584,7 +1584,7 @@ namespace DMSModelConfigDbUpdater
                     item.Updated = true;
                 }
 
-                // List report hotlinks often use "value" to indicate the value to use in the link is the same column that the hotlink appears in
+                // List report hotlinks often use "value" to indicate that the value to use in the link is the same column that the hotlink appears in
                 // Hotlinks with an empty string for WhichArg include color_label and literal_link
 
                 if (string.IsNullOrWhiteSpace(item.WhichArg) ||

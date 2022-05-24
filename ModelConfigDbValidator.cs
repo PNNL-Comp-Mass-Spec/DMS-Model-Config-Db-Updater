@@ -185,6 +185,7 @@ namespace DMSModelConfigDbUpdater
             string objectType;
 
             if (tableOrViewName.StartsWith("T_", StringComparison.OrdinalIgnoreCase))
+            else if (tableOrViewName.StartsWith("T_", StringComparison.OrdinalIgnoreCase))
             {
                 objectType = capitalizeFirstWord ? "Table" : "table";
             }
@@ -347,9 +348,9 @@ namespace DMSModelConfigDbUpdater
 
                 validationCompleted.Add(ValidateStoredProcedureArguments(ref errorCount));
 
-                validationCompleted.Add(ValidateListReportColumnNames(ref errorCount));
+                validationCompleted.Add(ValidateListReportHotlinks(ref errorCount));
 
-                validationCompleted.Add(ValidateDetailReportColumnNames(ref errorCount));
+                validationCompleted.Add(ValidateDetailReportHotlinks(ref errorCount));
 
                 if (errorCount > 0)
                 {
@@ -375,18 +376,17 @@ namespace DMSModelConfigDbUpdater
         /// </summary>
         /// <param name="errorCount"></param>
         /// <returns>True if names were validated, false if a critical error</returns>
-        private bool ValidateDetailReportColumnNames(ref int errorCount)
+        private bool ValidateDetailReportHotlinks(ref int errorCount)
         {
             try
             {
-                errorCount++;
-                errorCount--;
+                var detailReportHotlinks = mDbUpdater.ReadHotlinks(ModelConfigDbUpdater.DB_TABLE_DETAIL_REPORT_HOTLINKS);
 
-                return true;
+                return ValidateHotLinks(GeneralParameters.ParameterType.DetailReportView, detailReportHotlinks, ref errorCount);
             }
             catch (Exception ex)
             {
-                OnErrorEvent("Error in ValidateDetailReportColumnNames", ex);
+                OnErrorEvent("Error in ValidateDetailReportHotlinks", ex);
                 return false;
             }
         }
@@ -711,19 +711,186 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
+        private bool ValidateHotLinks(GeneralParameters.ParameterType sourceViewParameter, List<HotLinkInfo> hotlinks, ref int errorCount)
+        {
+            try
+            {
+                if (hotlinks.Count == 0)
+                    return true;
+
+                var sourceTableOrView = mGeneralParams.Parameters[sourceViewParameter];
+
+                var sourceStoredProcedure = mGeneralParams.Parameters[sourceViewParameter == GeneralParameters.ParameterType.ListReportView
+                    ? GeneralParameters.ParameterType.ListReportSP
+                    : GeneralParameters.ParameterType.DetailReportSP];
+
+                var reportType = sourceViewParameter switch
+                {
+                    GeneralParameters.ParameterType.ListReportView => "List report",
+                    GeneralParameters.ParameterType.DetailReportView => "Detail report",
+                    _ => "Unknown parent object"
+                };
+
+                string dataSourceType;
+                string sourceTableViewOrProcedureName;
+                bool storedProcedureDataSource;
+
+                if (!string.IsNullOrWhiteSpace(sourceTableOrView))
+                {
+                    dataSourceType = sourceTableOrView.StartsWith("T_", StringComparison.OrdinalIgnoreCase) ? "table" : "view";
+                    sourceTableViewOrProcedureName = sourceTableOrView;
+                    storedProcedureDataSource = false;
+                }
+                else if (!string.IsNullOrWhiteSpace(sourceStoredProcedure))
+                {
+                    dataSourceType = "stored procedure";
+                    sourceTableViewOrProcedureName = sourceStoredProcedure;
+                    storedProcedureDataSource = true;
+                }
+                else
+                {
+                    OnWarningEvent(
+                        "{0,-25} Hotlinks are defined, but the {1} table, view, or stored procedure is not defined",
+                        mDbUpdater.CurrentConfigDB + ":",
+                        reportType.ToLower());
+
+                    return true;
+                }
+
+                var columnNames = new SortedSet<string>();
+
+                if (storedProcedureDataSource && GetColumnNamesInStoredProcedure(sourceTableViewOrProcedureName, out var storedProcedureColumnNames))
+                {
+                    foreach (var item in storedProcedureColumnNames)
+                    {
+                        columnNames.Add(item);
+                    }
+                }
+                else if (GetColumnNamesInTableOrView(sourceTableViewOrProcedureName, out var tableOrViewColumnNames, out var targetDatabase))
+                {
+                    foreach (var item in tableOrViewColumnNames)
+                    {
+                        columnNames.Add(item);
+                    }
+                }
+                else
+                {
+                    OnWarningEvent(
+                        "{0,-25} {1} not found in database {2}; cannot validate hotlinks",
+                        mDbUpdater.CurrentConfigDB + ":",
+                        GetTableOrViewDescription(sourceTableViewOrProcedureName, true),
+                        targetDatabase);
+
+                    errorCount++;
+                    return true;
+                }
+
+                foreach (var item in hotlinks)
+                {
+                    var columnName = mDbUpdater.GetCleanFieldName(item.FieldName, out _);
+
+                    var validColumn = false;
+
+                    // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+                    foreach (var dbColumn in columnNames)
+                    {
+                        if (!columnName.Equals(dbColumn, StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        if (columnName.Equals(dbColumn, StringComparison.Ordinal))
+                        {
+                            validColumn = true;
+                            break;
+                        }
+
+                        OnWarningEvent(
+                            "{0,-25} {1} hotlink {2} has a mismatched case vs. the column name in the source {3}: {4}",
+                            mDbUpdater.CurrentConfigDB + ":",
+                            reportType,
+                            columnName,
+                            dataSourceType,
+                        dbColumn);
+
+                        errorCount++;
+                        break;
+                    }
+
+                    if (validColumn)
+                        continue;
+
+                    if (columnName.Equals("Sel."))
+                    {
+                        if (mDbUpdater.CurrentConfigDB.Equals("analysis_job_processor_group_association.db") ||
+                            mDbUpdater.CurrentConfigDB.Equals("analysis_job_processor_group_membership.db") ||
+                            mDbUpdater.CurrentConfigDB.Equals("z"))
+                        {
+                            continue;
+                        }
+
+                        Console.WriteLine("Possibly ignore the 'Sel.' column in " + mDbUpdater.CurrentConfigDB);
+                    }
+
+                    if (columnName.Equals("Sel"))
+                    {
+                        if (mDbUpdater.CurrentConfigDB.Equals("eus_users.db") ||
+                            mDbUpdater.CurrentConfigDB.StartsWith("helper_") ||
+                            mDbUpdater.CurrentConfigDB.Equals("lc_cart_request_loading.db") ||
+                            mDbUpdater.CurrentConfigDB.Equals("material_move_items.db") ||
+                            mDbUpdater.CurrentConfigDB.Equals("mc_enable_control_by_manager.db") ||
+                            mDbUpdater.CurrentConfigDB.Equals("mc_enable_control_by_manager_type.db") ||
+                            mDbUpdater.CurrentConfigDB.Equals("requested_run_admin.db"))
+                        {
+                            continue;
+                        }
+
+                        Console.WriteLine("Possibly ignore the 'Sel.' column in " + mDbUpdater.CurrentConfigDB);
+                    }
+
+                    if (columnName.Equals("@exclude"))
+                    {
+                        // The Requested Run Factors parameter-based list report and the Requested Run Batch Blocking grid report
+                        // use a special hotlink named @exclude to define the columns that are read-only and thus cannot be edited
+                        continue;
+                    }
+
+                    if (item.FieldName.Equals("Download") && mDbUpdater.CurrentConfigDB.Equals("mrm_list_attachment.db"))
+                    {
+                        continue;
+                    }
+
+                    OnWarningEvent(
+                        "{0,-25} {1} hotlink {2} was not found in source {3}",
+                        mDbUpdater.CurrentConfigDB + ":",
+                        reportType,
+                        columnName,
+                        GetTableOrViewDescription(sourceTableViewOrProcedureName, false, storedProcedureDataSource));
+
+                    errorCount++;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ValidateHotLinks", ex);
+                return false;
+            }
+        }
+
         /// <summary>
         /// Validate list report column names vs. the source view
         /// </summary>
         /// <param name="errorCount"></param>
         /// <returns>True if names were validated, false if a critical error</returns>
-        private bool ValidateListReportColumnNames(ref int errorCount)
+        private bool ValidateListReportHotlinks(ref int errorCount)
         {
             try
             {
-                errorCount++;
-                errorCount--;
+                var listReportHotlinks = mDbUpdater.ReadHotlinks(ModelConfigDbUpdater.DB_TABLE_LIST_REPORT_HOTLINKS);
 
-                return true;
+                return ValidateHotLinks(GeneralParameters.ParameterType.ListReportView, listReportHotlinks, ref errorCount);
             }
             catch (Exception ex)
             {
