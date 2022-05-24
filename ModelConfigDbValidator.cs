@@ -10,7 +10,12 @@ namespace DMSModelConfigDbUpdater
 {
     internal class ModelConfigDbValidator : EventNotifier
     {
-        // Ignore Spelling: citext, dbo, dms, gigasax, Levenshtein, Postgres, proteinseqs, wellplate
+        // ReSharper disable CommentTypo
+
+        // Ignore Spelling: citext, Crit, dbo, dms, Excl, gigasax, hotlink, hotlinks, Labelling, Levenshtein, Lvl
+        // Ignore Spelling: Parm, Postgres, proteinseqs, Pri, Proc, Prot, sel, Sep, wellplate
+
+        // ReSharper restore CommentTypo
 
         /// <summary>
         /// Keys in this dictionary are database names
@@ -131,12 +136,257 @@ namespace DMSModelConfigDbUpdater
                 }));
         }
 
-        private Dictionary<string, List<string>> GetMissingColumnDictionary(string tableOrView, List<string> columnsToIgnore)
+        private bool GetColumnNamesInStoredProcedure(string storedProcedureName, out List<string> columnNames)
         {
-            return new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
+            if (storedProcedureName.Equals("GetDatasetStatsByCampaign"))
             {
-                { tableOrView, columnsToIgnore }
-            };
+                columnNames = new List<string>
+                {
+                    "Campaign",
+                    "Work Package",
+                    "Pct EMSL Funded",
+                    "Runtime Hours",
+                    "Datasets",
+                    "Building",
+                    "Instrument",
+                    "Request Min",
+                    "Request Max",
+                    "Pct Total Runtime"
+                };
+            }
+            else if (storedProcedureName.Equals("GetPackageDatasetJobToolCrosstab"))
+            {
+                columnNames = new List<string>
+                {
+                    "Dataset",
+                    "Jobs"
+                };
+            }
+            else if (storedProcedureName.Equals("FindExistingJobsForRequest"))
+            {
+                columnNames = new List<string>
+                {
+                    "Job",
+                    "State",
+                    "Priority",
+                    "Request",
+                    "Created",
+                    "Start",
+                    "Finish",
+                    "Processor",
+                    "Dataset"
+                };
+            }
+            else if (storedProcedureName.Equals("FindMatchingDatasetsForJobRequest"))
+            {
+                columnNames = new List<string>
+                {
+                    "Sel",
+                    "Dataset",
+                    "Jobs",
+                    "New",
+                    "Busy",
+                    "Complete",
+                    "Failed",
+                    "Holding"
+                };
+            }
+            else if (storedProcedureName.Equals("GetCurrentMangerActivity"))
+            {
+                columnNames = new List<string>
+                {
+                    "Source",
+                    "When",
+                    "Who",
+                    "What",
+                    "#Alert"
+                };
+            }
+            else if (storedProcedureName.Equals("PredefinedAnalysisDatasets"))
+            {
+                columnNames = new List<string>
+                {
+                    "Dataset",
+                    "ID",
+                    "InstrumentClass",
+                    "Instrument",
+                    "Campaign",
+                    "Experiment",
+                    "Organism",
+                    "Exp Labelling",
+                    "Exp Comment",
+                    "DS Comment",
+                    "DS Type",
+                    "DS Rating",
+                    "Rating",
+                    "Sep Type",
+                    "Tool",
+                    "Parameter File",
+                    "Settings File",
+                    "Protein Collections",
+                    "Legacy FASTA"
+                };
+            }
+            else if (storedProcedureName.Equals("EvaluatePredefinedAnalysisRules"))
+            {
+                // ReSharper disable StringLiteralTypo
+
+                columnNames = new List<string>
+                {
+                    // Columns for mode: Show Jobs
+                    "Job",
+                    "Dataset",
+                    "Jobs",
+                    "Tool",
+                    "Pri",
+                    "Processor_Group",
+                    "Comment",
+                    "Param_File",
+                    "Settings_File",
+                    "OrganismDB_File",
+                    "Organism",
+                    "Protein_Collections",
+                    "Protein_Options",
+                    "Owner",
+                    "Export_Mode",
+                    "Special_Processing",
+                    // Columns for mode: Show Rules
+                    "Step",
+                    "Level",
+                    "Seq.",
+                    "Rule_ID",
+                    "Next Lvl.",
+                    "Trigger Mode",
+                    "Export Mode",
+                    "Action",
+                    "Reason",
+                    "Notes",
+                    "Analysis Tool",
+                    "Instrument Class Crit.",
+                    "Instrument Crit.",
+                    "Instrument Exclusion",
+                    "Campaign Crit.",
+                    "Campaign Exclusion",
+                    "Experiment Crit.",
+                    "Experiment Exclusion",
+                    "Organism Crit.",
+                    "Dataset Crit.",
+                    "Dataset Exclusion",
+                    "Dataset Type",
+                    "Exp. Comment Crit.",
+                    "Labelling Incl.",
+                    "Labelling Excl.",
+                    "Separation Type Crit.",
+                    "ScanCount Min",
+                    "ScanCount Max",
+                    "Parm File",
+                    "Settings File",
+                    // "Organism",
+                    "Organism DB",
+                    "Prot. Coll.",
+                    "Prot. Opts.",
+                    "Special Proc.",
+                    "Priority",
+                    "Processor Group"
+                };
+
+                // ReSharper restore StringLiteralTypo
+            }
+            else if (storedProcedureName.Equals("EvaluatePredefinedAnalysisRulesMDS"))
+            {
+                columnNames = new List<string>
+                {
+                    "ID",
+                    "Job",
+                    "Dataset",
+                    "Jobs",
+                    "Tool",
+                    "Pri",
+                    "Processor_Group",
+                    "Comment",
+                    "Param_File",
+                    "Settings_File",
+                    "OrganismDB_File",
+                    "Organism",
+                    "Protein_Collections",
+                    "Protein_Options",
+                    "Special_Processing",
+                    "Owner",
+                    "Export_Mode"
+                };
+            }
+            else if (storedProcedureName.Equals("ReportProductionStats"))
+            {
+                columnNames = new List<string>
+                {
+                    "Instrument",
+                    "Total Datasets",
+                    "Days in range",
+                    "Datasets per day",
+                    "Blank Datasets",
+                    "QC Datasets",
+                    "Bad Datasets",
+                    "Study Specific Datasets",
+                    "Study Specific Datasets per day",
+                    "EMSL-Funded Study Specific Datasets",
+                    "EF Study Specific Datasets per day",
+                    "Total AcqTimeDays",
+                    "Study Specific AcqTimeDays",
+                    "EF Total AcqTimeDays",
+                    "EF Study Specific AcqTimeDays",
+                    "Hours AcqTime per Day",
+                    "Inst.",
+                    "% Inst EMSL Owned",
+                    "EF Total Datasets",
+                    "EF Datasets per day",
+                    "% Blank Datasets",
+                    "% QC Datasets",
+                    "% Bad Datasets",
+                    "% Study Specific Datasets",
+                    "% EF Study Specific Datasets",
+                    "% EF Study Specific by AcqTime",
+                    "Inst"
+                };
+            }
+            else if (storedProcedureName.Equals("GetProteinCollectionMemberDetail"))
+            {
+                columnNames = new List<string>
+                {
+                    "Protein_Collection_ID",
+                    "Protein_Name",
+                    "Description",
+                    "Protein_Sequence",
+                    "Monoisotopic_Mass",
+                    "Average_Mass",
+                    "Residue_Count",
+                    "Molecular_Formula",
+                    "Protein_ID",
+                    "Reference_ID",
+                    "SHA1_Hash",
+                    "Member_ID",
+                    "Sorting_Index"
+                };
+            }
+            else if (storedProcedureName.Equals("GetFactorCrosstabByBatch"))
+            {
+                columnNames = new List<string>
+                {
+                    "Sel",
+                    "BatchID",
+                    "Name",
+                    "Status",
+                    "Dataset_ID",
+                    "Request",
+                    "Block",
+                    "Run Order"
+                };
+            }
+            else
+            {
+                columnNames = new List<string>();
+            }
+
+            return columnNames.Count > 0;
         }
 
         private bool GetColumnNamesInTableOrView(string tableOrViewName, out SortedSet<string> columnNames, out string targetDatabase)
@@ -180,11 +430,22 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        internal static string GetTableOrViewDescription(string tableOrViewName, bool capitalizeFirstWord = false)
+        private Dictionary<string, List<string>> GetMissingColumnDictionary(string tableOrView, List<string> columnsToIgnore)
+        {
+            return new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
+            {
+                { tableOrView, columnsToIgnore }
+            };
+        }
+
+        internal static string GetTableOrViewDescription(string tableOrViewName, bool capitalizeFirstWord = false, bool storedProcedureDataSource = false)
         {
             string objectType;
 
-            if (tableOrViewName.StartsWith("T_", StringComparison.OrdinalIgnoreCase))
+            if (storedProcedureDataSource)
+            {
+                objectType = capitalizeFirstWord ? "Stored procedure" : "stored procedure";
+            }
             else if (tableOrViewName.StartsWith("T_", StringComparison.OrdinalIgnoreCase))
             {
                 objectType = capitalizeFirstWord ? "Table" : "table";
@@ -581,7 +842,7 @@ namespace DMSModelConfigDbUpdater
                 if (!GetColumnNamesInTableOrView(entryPageTableOrView, out var columnNames, out var targetDatabase))
                 {
                     OnWarningEvent(
-                        "{0,-25} {1} not found in database {2}",
+                        "{0,-25} {1} not found in database {2}; cannot validate form fields",
                         mDbUpdater.CurrentConfigDB + ":",
                         GetTableOrViewDescription(entryPageTableOrView, true),
                         targetDatabase);
