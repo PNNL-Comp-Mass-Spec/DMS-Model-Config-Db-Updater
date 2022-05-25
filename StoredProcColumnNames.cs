@@ -240,6 +240,46 @@ namespace DMSModelConfigDbUpdater
                     "In history list",
                     "Datasets Created"
                 },
+                "ReportTissueUsageStats" => new List<string>
+                {
+                    "Tissue_ID",
+                    "Tissue",
+                    "Experiments",
+                    "Exp_Created_Min",
+                    "Exp_Created_Max",
+                    "Organism_First",
+                    "Organism_Last",
+                    "Campaign_First",
+                    "Campaign_Last"
+                },
+                "GetMonthlyInstrumentUsageReport" => new List<string>
+                {
+                    "Instrument",
+                    "EMSL_Inst_ID",
+                    "Start",
+                    "Type",
+                    "Minutes",
+                    "Proposal",
+                    "Usage",
+                    "Users",
+                    "Operator",
+                    "Comment",
+                    "Year",
+                    "Month",
+                    "Dataset_ID",
+                    "Start",
+                    "Type",
+                    "Minutes",
+                    "Proposal",
+                    "Usage",
+                    "Comment",
+                    "Dataset_ID",
+                    "Type",
+                    "Minutes",
+                    "Percentage",
+                    "Usage",
+                    "Proposal"
+                },
                 _ => new List<string>()
             };
 
