@@ -789,8 +789,26 @@ namespace DMSModelConfigDbUpdater
                     return true;
                 }
 
+                // This sorted set is used to check for duplicates
+                var fieldNames = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+
                 foreach (var item in hotlinks)
                 {
+                    if (fieldNames.Contains(item.FieldName))
+                    {
+                        OnWarningEvent(
+                            "{0,-25} Two {1} hotlinks have the same name: {2}",
+                            mDbUpdater.CurrentConfigDB + ":",
+                            reportType.ToLower(),
+                            item.FieldName);
+
+                        errorCount++;
+                    }
+                    else
+                    {
+                        fieldNames.Add(item.FieldName);
+                    }
+
                     var columnName = mDbUpdater.GetCleanFieldName(item.FieldName, out _);
 
                     var validColumn = false;
