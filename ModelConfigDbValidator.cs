@@ -754,9 +754,9 @@ namespace DMSModelConfigDbUpdater
                 else
                 {
                     OnWarningEvent(
-                        "{0,-25} Hotlinks are defined, but the {1} table, view, or stored procedure is not defined",
+                        "{0,-25} {1} hotlinks are defined, but the source table, view, or stored procedure is not defined",
                         mDbUpdater.CurrentConfigDB + ":",
-                        reportType.ToLower());
+                        reportType);
 
                     return true;
                 }
@@ -815,7 +815,7 @@ namespace DMSModelConfigDbUpdater
                             reportType,
                             columnName,
                             dataSourceType,
-                        dbColumn);
+                            dbColumn);
 
                         errorCount++;
                         break;
