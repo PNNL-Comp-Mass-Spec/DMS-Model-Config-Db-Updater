@@ -50,6 +50,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ChooserDefinition.cs" />
     <Compile Include="ColumnNameInfo.cs" />
     <Compile Include="BasicField.cs" />
     <Compile Include="DatabaseColumnInfo.cs" />
@@ -68,6 +69,7 @@
     <Compile Include="SQLiteUtilities.cs" />
     <Compile Include="StoredProcArgumentInfo.cs" />
     <Compile Include="StoredProcColumnNames.cs" />
+    <Compile Include="UtilityQueryDefinition.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

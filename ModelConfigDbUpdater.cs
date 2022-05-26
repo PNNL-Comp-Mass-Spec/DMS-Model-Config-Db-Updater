@@ -75,14 +75,42 @@ namespace DMSModelConfigDbUpdater
         private readonly Dictionary<string, string> mViewNameMapWithSchema;
 
         /// <summary>
+        /// Form field chooser definitions loaded from dms_chooser.db
+        /// </summary>
+        /// <remarks>Only used when validating field names</remarks>
+        internal Dictionary<string, ChooserDefinition> ChooserDefinitions { get; }
+
+        /// <summary>
         /// Filename of the current model config DB
         /// </summary>
         public string CurrentConfigDB { get; set; }
 
         /// <summary>
+        /// Keys are list report helper names, values are usage counts
+        /// </summary>
+        /// <remarks>
+        /// List report helpers are referenced by form field choosers of type list-report.helper
+        /// </remarks>
+        internal Dictionary<string, int> ListReportHelperUsage { get; }
+
+        /// <summary>
         /// Processing options
         /// </summary>
         public ModelConfigDbUpdaterOptions Options { get; }
+
+        /// <summary>
+        /// Keys are pick list names, values are usage counts
+        /// </summary>
+        /// <remarks>
+        /// Pick lists are referenced by form field choosers of type picker.append, picker.list, etc.
+        /// </remarks>
+        internal Dictionary<string, int> PickListChooserUsage { get; }
+
+        /// <summary>
+        /// Utility queries (aka ad hoc queries) loaded from ad_hoc_query.db
+        /// </summary>
+        /// <remarks>Only used when validating field names</remarks>
+        internal Dictionary<string, UtilityQueryDefinition> UtilityQueryDefinitions { get; }
 
         /// <summary>
         /// Constructor
@@ -93,6 +121,14 @@ namespace DMSModelConfigDbUpdater
             Options = options;
 
             CurrentConfigDB = string.Empty;
+
+            ChooserDefinitions = new Dictionary<string, ChooserDefinition>(StringComparer.OrdinalIgnoreCase);
+
+            ListReportHelperUsage = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            PickListChooserUsage = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            UtilityQueryDefinitions = new Dictionary<string, UtilityQueryDefinition>(StringComparer.OrdinalIgnoreCase);
 
             mViewColumnNameMap = new Dictionary<string, Dictionary<string, ColumnNameInfo>>(StringComparer.OrdinalIgnoreCase);
 
@@ -694,11 +730,42 @@ namespace DMSModelConfigDbUpdater
                     searchPattern,
                     PathUtils.CompactPathString(inputDirectory.FullName, 80));
 
-                if (Options.ValidateColumnNamesWithDatabase &&
-                    Options.SaveValidateResultsToFile &&
-                    !CreateValidationResultsFile(inputDirectory))
+                if (Options.ValidateColumnNamesWithDatabase)
                 {
-                    return false;
+                    var chooserDefinitionFile = new FileInfo(Path.Combine(inputDirectory.FullName, "dms_chooser.db"));
+
+                    if (chooserDefinitionFile.Exists)
+                    {
+                        var choosersLoaded = ReadChooserDefinitions(chooserDefinitionFile);
+
+                        if (!choosersLoaded)
+                            return false;
+                    }
+                    else
+                    {
+                        OnWarningEvent("Chooser definition file not found; cannot validate chooser names");
+                        OnDebugEvent("Expected file path: " + chooserDefinitionFile.FullName);
+                    }
+
+                    var adHocQueryDefinitionFile = new FileInfo(Path.Combine(inputDirectory.FullName, "ad_hoc_query.db"));
+
+                    if (adHocQueryDefinitionFile.Exists)
+                    {
+                        var utilityQueriesLoaded = ReadUtilityQueryDefinitions(adHocQueryDefinitionFile);
+
+                        if (!utilityQueriesLoaded)
+                            return false;
+                    }
+                    else
+                    {
+                        OnWarningEvent("Ad hoc query definition file not found; cannot validate ad-hoc query names");
+                        OnDebugEvent("Expected file path: " + adHocQueryDefinitionFile.FullName);
+                    }
+
+                    if (Options.SaveValidateResultsToFile && !CreateValidationResultsFile(inputDirectory))
+                    {
+                        return false;
+                    }
                 }
 
                 var filesProcessed = 0;
@@ -726,6 +793,12 @@ namespace DMSModelConfigDbUpdater
 
                 if (Options.ValidateColumnNamesWithDatabase)
                 {
+                    if (filesProcessed > 100)
+                    {
+                        ValidateFormFieldChooserUsage();
+                        ValidateListReportHelperUsage();
+                    }
+
                     ShowValidationSummary();
                 }
 
@@ -841,6 +914,68 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
+        /// <summary>
+        /// Read chooser definitions from the dms_chooser.db file
+        /// </summary>
+        /// <param name="chooserDefinitionFile"></param>
+        /// <returns>True if successful, false if an error</returns>
+        private bool ReadChooserDefinitions(FileSystemInfo chooserDefinitionFile)
+        {
+            ChooserDefinitions.Clear();
+
+            try
+            {
+                var connectionString = "Data Source=" + chooserDefinitionFile.FullName + "; Version=3; DateTimeFormat=Ticks; Read Only=False;";
+
+                var chooserDbReader = new SQLiteConnection(connectionString, true);
+
+                try
+                {
+                    chooserDbReader.Open();
+                }
+                catch (Exception ex)
+                {
+                    OnErrorEvent("Error opening SQLite database " + chooserDefinitionFile.Name, ex);
+                    return false;
+                }
+
+                if (!SQLiteUtilities.TableExists(chooserDbReader, "chooser_definitions"))
+                {
+                    OnWarningEvent("File {0} does not have table chooser_definitions", chooserDefinitionFile.FullName);
+                    return false;
+                }
+
+                using var dbCommand = chooserDbReader.CreateCommand();
+
+                dbCommand.CommandText = "SELECT id, name, db, type, value FROM chooser_definitions";
+
+                using var reader = dbCommand.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    var id = SQLiteUtilities.GetInt32(reader, "id");
+                    var chooserName = SQLiteUtilities.GetString(reader, "name");
+                    var database = SQLiteUtilities.GetString(reader, "db");
+                    var chooserType = SQLiteUtilities.GetString(reader, "type");
+                    var value = SQLiteUtilities.GetString(reader, "value");
+
+                    var chooser = new ChooserDefinition(id, chooserName, database, chooserType)
+                    {
+                        Value = value
+                    };
+
+                    ChooserDefinitions.Add(chooserName, chooser);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ReadChooserDefinitions", ex);
+                return false;
+            }
+        }
+
         internal bool ReadExternalSources(out List<BasicField> externalSources)
         {
             externalSources = new List<BasicField>();
@@ -950,7 +1085,7 @@ namespace DMSModelConfigDbUpdater
 
                 using var dbCommand = mDbConnectionReader.CreateCommand();
 
-                dbCommand.CommandText = "SELECT id, field, XRef FROM form_field_choosers";
+                dbCommand.CommandText = "SELECT id, field, type, PickListName, Target, XRef FROM form_field_choosers";
 
                 using var reader = dbCommand.ExecuteReader();
 
@@ -958,9 +1093,19 @@ namespace DMSModelConfigDbUpdater
                 {
                     var id = SQLiteUtilities.GetInt32(reader, "id");
                     var formField = SQLiteUtilities.GetString(reader, "field");
+                    var chooserType = SQLiteUtilities.GetString(reader, "type");
+                    var pickListName = SQLiteUtilities.GetString(reader, "PickListName");
+                    var helperName = SQLiteUtilities.GetString(reader, "Target");
                     var crossReference = SQLiteUtilities.GetString(reader, "XRef");
 
-                    formFieldChoosers.Add(new FormFieldChooserInfo(id, formField, crossReference));
+                    var chooser = new FormFieldChooserInfo(id, formField, crossReference)
+                    {
+                        Type = chooserType,
+                        PickListName = pickListName,
+                        ListReportHelperName = helperName
+                    };
+
+                    formFieldChoosers.Add(chooser);
                 }
 
                 return true;
@@ -1100,6 +1245,67 @@ namespace DMSModelConfigDbUpdater
             catch (Exception ex)
             {
                 OnErrorEvent("Error in ReadStoredProcedureArguments", ex);
+                return false;
+            }
+        }
+
+        private bool ReadUtilityQueryDefinitions(FileSystemInfo adHocQueryDefinitionFile)
+        {
+            UtilityQueryDefinitions.Clear();
+
+            try
+            {
+                var connectionString = "Data Source=" + adHocQueryDefinitionFile.FullName + "; Version=3; DateTimeFormat=Ticks; Read Only=False;";
+
+                var utilityQueryReader = new SQLiteConnection(connectionString, true);
+
+                try
+                {
+                    utilityQueryReader.Open();
+                }
+                catch (Exception ex)
+                {
+                    OnErrorEvent("Error opening SQLite database " + adHocQueryDefinitionFile.Name, ex);
+                    return false;
+                }
+
+                if (!SQLiteUtilities.TableExists(utilityQueryReader, "utility_queries"))
+                {
+                    OnWarningEvent("File {0} does not have table utility_queries", adHocQueryDefinitionFile.FullName);
+                    return false;
+                }
+
+                using var dbCommand = utilityQueryReader.CreateCommand();
+
+                dbCommand.CommandText = "SELECT id, name, label, db, \"table\", columns FROM utility_queries";
+
+                using var reader = dbCommand.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    var id = SQLiteUtilities.GetInt32(reader, "id");
+                    var queryName = SQLiteUtilities.GetString(reader, "name");
+                    var label = SQLiteUtilities.GetString(reader, "label");
+                    var database = SQLiteUtilities.GetString(reader, "db");
+                    var table = SQLiteUtilities.GetString(reader, "table");
+                    var columns = SQLiteUtilities.GetString(reader, "columns");
+
+                    var utilityQuery = new UtilityQueryDefinition(id, queryName)
+                    {
+                        Label = label,
+                        Database = database,
+                        Table = table,
+                        Columns = columns
+                    };
+
+                    UtilityQueryDefinitions.Add(queryName, utilityQuery);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ReadUtilityQueryDefinitions", ex);
                 return false;
             }
         }
@@ -1858,6 +2064,72 @@ namespace DMSModelConfigDbUpdater
             {
                 OnErrorEvent("Error in ValidateColumnNames", ex);
                 return false;
+            }
+        }
+
+        private void ValidateFormFieldChooserUsage()
+        {
+            var unusedChoosers = new SortedSet<string>();
+
+            foreach (var chooser in ChooserDefinitions)
+            {
+                if (!PickListChooserUsage.TryGetValue(chooser.Key, out var chooserUsage) || chooserUsage == 0)
+                {
+                    unusedChoosers.Add(chooser.Key);
+                }
+            }
+
+            if (unusedChoosers.Count > 0)
+            {
+                OnValidationResultsWarningEvent("Pick list choosers not used by any of the validated model config DBs:");
+                OnValidationResultsWarningEvent(string.Format("  {0}", string.Join("\n  ", unusedChoosers)));
+            }
+
+            foreach (var chooser in PickListChooserUsage)
+            {
+                if (!ChooserDefinitions.ContainsKey(chooser.Key))
+                {
+                    OnValidationResultsWarningEvent(string.Format(
+                        "One of the validated model config DBs referenced pick list chooser {0}, " +
+                        "but that chooser is not defined in dms_chooser.db", chooser.Key));
+                }
+            }
+        }
+
+        private void ValidateListReportHelperUsage()
+        {
+            var unusedHelpers = new SortedSet<string>();
+
+            var inputDirectory = new DirectoryInfo(Options.InputDirectory);
+            var listReportHelpers = new SortedSet<string>();
+
+            foreach (var helperFile in inputDirectory.GetFiles("helper_*.db"))
+            {
+                listReportHelpers.Add(Path.GetFileNameWithoutExtension(helperFile.Name));
+            }
+
+            foreach (var helperName in listReportHelpers)
+            {
+                if (!ListReportHelperUsage.TryGetValue(helperName, out var helperUsage) || helperUsage == 0)
+                {
+                    unusedHelpers.Add(helperName);
+                }
+            }
+
+            if (unusedHelpers.Count > 0)
+            {
+                OnValidationResultsWarningEvent("List report helpers not used by any of the validated model config DBs:");
+                OnValidationResultsWarningEvent(string.Format("  {0}", string.Join("\n  ", unusedHelpers)));
+            }
+
+            foreach (var helper in ListReportHelperUsage)
+            {
+                if (!listReportHelpers.Contains(helper.Key))
+                {
+                    OnValidationResultsWarningEvent(string.Format(
+                        "One of the validated model config DBs referenced list report helper {0}, " +
+                        "but that helper is not a page family on the DMS website (no .db file)", helper.Key));
+                }
             }
         }
 

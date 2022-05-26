@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using PRISM;
 using PRISMDatabaseUtils;
 
@@ -10,8 +11,13 @@ namespace DMSModelConfigDbUpdater
 {
     internal class ModelConfigDbValidator : EventNotifier
     {
-        // Ignore Spelling: citext, dbo, dms, gigasax, hotlink, hotlinks, Levenshtein
+        // Ignore Spelling: citext, dbo, dms, gigasax, hotlink, hotlinks, Levenshtein, lr
         // Ignore Spelling: Postgres, proteinseqs, Proc, Sel, wellplate
+
+        /// <summary>
+        /// This RegEx matches form field choosers that reference an ad hoc query
+        /// </summary>
+        private readonly Regex mAdHocQueryMatcher = new("ad_hoc_query/(?<QueryName>[^/]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         /// <summary>
         /// Keys in this dictionary are database names
@@ -19,10 +25,19 @@ namespace DMSModelConfigDbUpdater
         /// </summary>
         private readonly Dictionary<string, DatabaseColumnInfo> mDatabaseColumns;
 
+        /// <summary>
+        /// Model Config DB Updater instance
+        /// </summary>
         private readonly ModelConfigDbUpdater mDbUpdater;
 
+        /// <summary>
+        /// Form fields
+        /// </summary>
         private readonly List<FormFieldInfo> mFormFields;
 
+        /// <summary>
+        /// General parameters
+        /// </summary>
         private readonly GeneralParameters mGeneralParams;
 
         /// <summary>
@@ -31,14 +46,17 @@ namespace DMSModelConfigDbUpdater
         /// </summary>
         private readonly Dictionary<string, Dictionary<string, List<string>>> mMissingColumnsToIgnore;
 
+        /// <summary>
+        /// Processing options
+        /// </summary>
         private readonly ModelConfigDbUpdaterOptions mOptions;
 
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="dbUpdater"></param>
-        /// <param name="generalParams"></param>
-        /// <param name="formFields"></param>
+        /// <param name="dbUpdater">Model Config DB Updater instance</param>
+        /// <param name="generalParams">General parameters</param>
+        /// <param name="formFields">Form fields</param>
         public ModelConfigDbValidator(ModelConfigDbUpdater dbUpdater, GeneralParameters generalParams, List<FormFieldInfo> formFields)
         {
             mDatabaseColumns = new Dictionary<string, DatabaseColumnInfo>(StringComparer.OrdinalIgnoreCase);
@@ -262,6 +280,7 @@ namespace DMSModelConfigDbUpdater
                     if (mOptions.DatabaseServer.Equals("gigasax", StringComparison.OrdinalIgnoreCase) &&
                         mGeneralParams.Parameters[GeneralParameters.ParameterType.DatabaseGroup].Equals("manager_control", StringComparison.OrdinalIgnoreCase))
                     {
+                        // Auto-change the server since the manager control database is not on Gigasax
                         serverToUse = "proteinseqs";
                     }
                     else
@@ -341,8 +360,7 @@ namespace DMSModelConfigDbUpdater
                 validationCompleted.Add(ValidateFormFieldNames(ref errorCount));
 
                 // ToDo:
-                // Validate form field names in other tables, including sproc_args, form_field_choosers (including XRef), form_field_options, external sources,
-                //    and general params with the post_submission_detail_id and entry_page_data_id_col parameters
+                // Validate form field names general parameters post_submission_detail_id and entry_page_data_id_col parameters
 
                 validationCompleted.Add(ValidateFormFieldChoosers(ref errorCount));
 
@@ -552,10 +570,39 @@ namespace DMSModelConfigDbUpdater
                 {
                     ValidateBasicField("Form field chooser", formFieldChooser, ref errorCount, out var emptyFieldName);
 
-                    if (!emptyFieldName)
+                    if (emptyFieldName)
                     {
-                        ValidateFieldNameVsFormFields("Form field chooser XRef", formFieldChooser.CrossReference, ref errorCount);
+                        continue;
                     }
+
+                    ValidateFieldNameVsFormFields("Form field chooser XRef", formFieldChooser.CrossReference, ref errorCount);
+
+                    switch (formFieldChooser.Type)
+                    {
+                        case "list-report.helper":
+                            ValidateListReportChooser(formFieldChooser, ref errorCount);
+                            break;
+
+                        case "link.list":
+                        case "picker.append":
+                        case "picker.list":
+                        case "picker.prepend":
+                        case "picker.prevDate":
+                        case "picker.replace":
+                            ValidatePickListChooser(formFieldChooser, ref errorCount);
+                            break;
+
+                        default:
+                            OnWarningEvent("{0,-25} Unrecognized form field chooser type for chooser {1}: {2}",
+                                mDbUpdater.CurrentConfigDB + ":",
+                                formFieldChooser.FieldName,
+                                formFieldChooser.Type);
+
+                            errorCount++;
+                            break;
+                    }
+
+
                 }
 
                 return true;
@@ -758,6 +805,7 @@ namespace DMSModelConfigDbUpdater
                         mDbUpdater.CurrentConfigDB + ":",
                         reportType);
 
+                    errorCount++;
                     return true;
                 }
 
@@ -901,6 +949,97 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
+        private void ValidateListReportChooser(FormFieldChooserInfo formFieldChooser, ref int errorCount)
+        {
+            if (string.IsNullOrWhiteSpace(formFieldChooser.ListReportHelperName))
+            {
+                OnWarningEvent(
+                    "{0,-25} Form field chooser {1} uses a list report helper, but the Target field is empty",
+                    mDbUpdater.CurrentConfigDB, formFieldChooser.FieldName);
+
+                errorCount++;
+            }
+            else
+            {
+                if (!formFieldChooser.ListReportHelperName.Equals(formFieldChooser.ListReportHelperName.Trim()))
+                {
+                    OnWarningEvent(
+                        "{0,-25} Form field chooser {1} has extra whitespace at the start or end that should be removed",
+                        mDbUpdater.CurrentConfigDB, formFieldChooser.FieldName);
+
+                    errorCount++;
+                }
+
+                var adHocQueryMatch = mAdHocQueryMatcher.Match(formFieldChooser.ListReportHelperName);
+
+                if (adHocQueryMatch.Success)
+                {
+                    // Ad-hoc query (aka utility query)
+                    ValidateUtilityQueryChooser(formFieldChooser, adHocQueryMatch.Groups["QueryName"].Value, ref errorCount);
+                }
+                else
+                {
+                    ValidateListReportHelper(formFieldChooser, ref errorCount);
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(formFieldChooser.PickListName))
+                return;
+
+            OnWarningEvent(
+                "{0,-25} Form field chooser {1} is a list report helper chooser, but a pick list name is defined",
+                mDbUpdater.CurrentConfigDB,
+                formFieldChooser.FieldName);
+
+            errorCount++;
+        }
+
+        private void ValidateListReportHelper(FormFieldChooserInfo formFieldChooser, ref int errorCount)
+        {
+            var slashIndex = formFieldChooser.ListReportHelperName.IndexOf("/", StringComparison.OrdinalIgnoreCase);
+
+            var helperName = slashIndex > 0
+                ? formFieldChooser.ListReportHelperName.Substring(0, slashIndex).Trim()
+                : formFieldChooser.ListReportHelperName.Trim();
+
+            if (helperName.Equals("helper_inst_source"))
+            {
+                // This is a special helper for showing files and directories on the instrument computer
+                // It does not have a model config DB
+                return;
+            }
+
+            var helperFile = new FileInfo(Path.Combine(mOptions.InputDirectory, string.Format("{0}.db", helperName)));
+
+            if (!helperFile.Exists)
+            {
+                OnWarningEvent(
+                    "{0,-25} Form field chooser {1} uses list report helper {2}, but the model config file does not exist",
+                    mDbUpdater.CurrentConfigDB, formFieldChooser.FieldName, helperName);
+
+                OnDebugEvent("Expected file path: " + helperFile.FullName);
+
+                errorCount++;
+            }
+            else if (!Path.GetFileNameWithoutExtension(helperFile.Name).Equals(helperName))
+            {
+                OnWarningEvent(
+                    "{0,-25} Form field chooser {1} uses list report helper {2}, but the model config file has different capitalization: {3}",
+                    mDbUpdater.CurrentConfigDB, formFieldChooser.FieldName, helperName, helperFile.Name);
+
+                errorCount++;
+            }
+
+            if (mDbUpdater.ListReportHelperUsage.TryGetValue(helperName, out var usageCount))
+            {
+                mDbUpdater.ListReportHelperUsage[helperName] = usageCount + 1;
+            }
+            else
+            {
+                mDbUpdater.ListReportHelperUsage.Add(helperName, 1);
+            }
+        }
+
         /// <summary>
         /// Validate list report column names vs. the source view
         /// </summary>
@@ -919,6 +1058,99 @@ namespace DMSModelConfigDbUpdater
                 OnErrorEvent("Error in ValidateListReportColumnNames", ex);
                 return false;
             }
+        }
+
+        private void ValidatePickListChooser(FormFieldChooserInfo formFieldChooser, ref int errorCount)
+        {
+            var dateChooser = formFieldChooser.Type.Equals("picker.prevDate");
+            var pickListName = formFieldChooser.PickListName.Trim();
+
+            if (!dateChooser && string.IsNullOrWhiteSpace(pickListName))
+            {
+                OnWarningEvent(
+                    "{0,-25} Form field chooser {1} is a pick list chooser, but the PickListName field is empty",
+                    mDbUpdater.CurrentConfigDB,
+                    formFieldChooser.FieldName);
+
+                errorCount++;
+            }
+            else if (dateChooser)
+            {
+                if (pickListName.Length > 0)
+                {
+                    // Show a warning, but do not increment errorCount
+                    // prevDatePickList or futureDatePickList
+                    if (pickListName.Equals("prevDatePickList", StringComparison.OrdinalIgnoreCase) ||
+                        pickListName.Equals("futureDatePickList", StringComparison.OrdinalIgnoreCase))
+                    {
+                        OnWarningEvent(
+                            "{0,-25} Form field chooser {1} is a date selection chooser; " +
+                            "we previously stored '{2} in the PickListName field, but that is no longer necessary. " +
+                            "Consider deleting the text",
+                            mDbUpdater.CurrentConfigDB, formFieldChooser.FieldName, pickListName);
+                    }
+                    else
+                    {
+                        OnWarningEvent(
+                            "{0,-25} Form field chooser {1} is a date selection chooser; the PickListName field should be empty, not {2}",
+                            mDbUpdater.CurrentConfigDB, formFieldChooser.FieldName, pickListName);
+                    }
+                }
+            }
+            else
+            {
+                if (!formFieldChooser.PickListName.Equals(pickListName))
+                {
+                    OnWarningEvent(
+                        "{0,-25} Pick list chooser {1} has extra whitespace at the start or end that should be removed",
+                        mDbUpdater.CurrentConfigDB,
+                        formFieldChooser.FieldName);
+
+                    errorCount++;
+                }
+
+                if (mDbUpdater.ChooserDefinitions.Count > 0)
+                {
+                    if (!mDbUpdater.ChooserDefinitions.TryGetValue(pickListName, out var chooserDefinition))
+                    {
+                        OnWarningEvent(
+                            "{0,-25} Pick list chooser {1} uses pick list {2}, but that chooser is not defined in the chooser_definitions table in dms_chooser.db",
+                            mDbUpdater.CurrentConfigDB,
+                            formFieldChooser.FieldName, formFieldChooser.PickListName);
+
+                        errorCount++;
+                    }
+                    else if (!chooserDefinition.Name.Equals(pickListName))
+                    {
+                        OnWarningEvent(
+                            "{0,-25} Pick list chooser {1} uses pick list {2}, but the chooser definition " +
+                            "in the chooser_definitions table in dms_chooser.db has different capitalization: {3}",
+                            mDbUpdater.CurrentConfigDB,
+                            formFieldChooser.FieldName, pickListName, chooserDefinition.Name);
+
+                        errorCount++;
+                    }
+                }
+
+                if (mDbUpdater.PickListChooserUsage.TryGetValue(pickListName, out var usageCount))
+                {
+                    mDbUpdater.PickListChooserUsage[pickListName] = usageCount + 1;
+                }
+                else
+                {
+                    mDbUpdater.PickListChooserUsage.Add(pickListName, 1);
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(formFieldChooser.ListReportHelperName))
+                return;
+
+            OnWarningEvent(
+                "{0,-25} Form field chooser {1} is a pick list chooser, but the Target field has a list report helper defined",
+                mDbUpdater.CurrentConfigDB,
+                formFieldChooser.FieldName);
+
+            errorCount++;
         }
 
         /// <summary>
@@ -968,6 +1200,40 @@ namespace DMSModelConfigDbUpdater
             {
                 OnErrorEvent("Error in ValidateStoredProcedureArguments", ex);
                 return false;
+            }
+        }
+
+        private void ValidateUtilityQueryChooser(FormFieldChooserInfo formFieldChooser, string adHocQueryName, ref int errorCount)
+        {
+            if (!formFieldChooser.ListReportHelperName.StartsWith("data/lr/ad_hoc_query/", StringComparison.OrdinalIgnoreCase))
+            {
+                OnWarningEvent(
+                    "{0,-25} Form field chooser {1} has ad_hoc_query in the Target field, but does not start with data/lr/ad_hoc_query/",
+                    mDbUpdater.CurrentConfigDB, formFieldChooser.FieldName);
+
+                errorCount++;
+                return;
+            }
+
+            if (mDbUpdater.UtilityQueryDefinitions.Count == 0)
+                return;
+
+            if (!mDbUpdater.UtilityQueryDefinitions.TryGetValue(adHocQueryName, out var queryDefinition))
+            {
+                OnWarningEvent(
+                    "{0,-25} Form field chooser {1} uses ad_hoc_query {2}, but that query is not defined in the utility_queries table in ad_hoc_query.db",
+                    mDbUpdater.CurrentConfigDB, formFieldChooser.FieldName, adHocQueryName);
+
+                errorCount++;
+            }
+            else if (!queryDefinition.Name.Equals(adHocQueryName))
+            {
+                OnWarningEvent(
+                    "{0,-25} Form field chooser {1} uses ad_hoc_query {2}, but the query definition " +
+                    "in the utility_queries table in ad_hoc_query.db has different capitalization: {3}",
+                    mDbUpdater.CurrentConfigDB, formFieldChooser.FieldName, adHocQueryName, queryDefinition.Name);
+
+                errorCount++;
             }
         }
     }

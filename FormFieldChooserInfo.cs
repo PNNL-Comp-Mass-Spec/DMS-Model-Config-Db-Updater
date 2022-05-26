@@ -8,6 +8,27 @@
         public string CrossReference { get; }
 
         /// <summary>
+        /// List report helper name
+        /// </summary>
+        /// <remarks>
+        /// Used by choosers of type list-report.helper
+        /// </remarks>
+        public string ListReportHelperName { get; set; }
+
+        /// <summary>
+        /// Pick list name
+        /// </summary>
+        /// <remarks>
+        /// Pick lists are referenced by form field choosers of type picker.append, picker.list, picker.replace, etc., and also by link.list choosers
+        /// </remarks>
+        public string PickListName { get; set; }
+
+        /// <summary>
+        /// Chooser type
+        /// </summary>
+        public string Type { get; set; }
+
+        /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="id"></param>
@@ -16,6 +37,9 @@
         public FormFieldChooserInfo(int id, string formFieldName, string crossReference) : base(id, formFieldName)
         {
             CrossReference = crossReference;
+            ListReportHelperName = string.Empty;
+            PickListName = string.Empty;
+            Type = string.Empty;
         }
 
         /// <summary>
