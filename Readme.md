@@ -20,6 +20,8 @@ DMSModelConfigDbUpdater.exe
   [/Preview]
   [/RenameList] [/RenameDetail] [/RenameEntry] [/RenameSPs]
   [/UsePgSchema]
+  [/Validate] [/Server]
+  [/WriteResults] [/ResultsFile:ValidationResults.txt]
   [/ParamFile:ParamFileName.conf] [/CreateParamFile]
 ```
 
@@ -91,6 +93,15 @@ The processing options can be specified in a parameter file using `/ParamFile:Op
 * Define options using the format `ArgumentName=Value`
 * Lines starting with `#` or `;` will be treated as comments
 * Additional arguments on the command line can supplement or override the arguments in the parameter file
+
+Use `/Validate` to read column names used in each SQLite file and validate against the column names in the source tables or views for list reports, detail reports, and entry pages
+* When this is true, the name map files are not loaded and no object renaming is performed
+
+Use `/Server:ServerName` to define the server name to contact to validate form field names against columns in tables or views
+* Assumed to be SQL Server if `/UsePostgresSchema` is false; otherwise, assumes PostgreSQL
+
+Use `/WriteResults` to save the validation results to a text file
+* Use `/ResultsFile:ValidationResults.txt` to customize the filename
 
 Use `/CreateParamFile` to create an example parameter file
 * By default, the example parameter file content is shown at the console

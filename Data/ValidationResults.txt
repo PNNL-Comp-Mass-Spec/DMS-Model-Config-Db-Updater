@@ -58,5 +58,56 @@ Skipping validation of stored procedure arguments for run_op_logs.db since this 
   Ignoring column missing from t_analysis_job since expected: prot_coll_name_list
   Ignoring column missing from t_analysis_job since expected: prot_coll_options_list
 
+Pick list choosers not used by any of the validated model config DBs:
+
+  amtDBPicklist
+  apeWorkflowPickList
+  archiveStateName
+  archiveUpdateName
+  captureMultiJobUpdateActionsPickList
+  data_package_list
+  datasetStatePickList
+  dnaTabIDPickList
+  experimentUserPRNPickList
+  filterSetPickList
+  futureDatePickList
+  instUsageJournalEMSLTypePickList
+  internalStandardsPicklist
+  lcCartComponentStatusPickList
+  lcCartConfigPickList
+  logEntryPostedByPickList
+  logEntryTypePickList
+  longIntervalReasonPickList
+  macJobOptionsPicklist
+  macJobTypePicklist
+  orgDefPickList
+  osm_package_list
+  percentagePicklist
+  postdigestIntStdPickList
+  predefCritNamePickList
+  predefCritValuePickList
+  predigestIntStdPickList
+  prevDatePickList
+  ReqRunInstrumentPicklist
+  ReqRunInstrumentPicklistEx
+  requested_run_batch_list
+  samplePrepRequestFacilityList
+  secsepPickList
+  usageTrackedInstruments
+
+List report helpers not used by any of the validated model config DBs:
+
+  helper_campaign_ckbx
+  helper_capture_job_steps
+  helper_dataset_capture_job_steps_ckbx
+  helper_dataset_separation_type_ckbx
+  helper_dataset_type_ckbx
+  helper_experiment_group_ckbx
+  helper_multi_dataset_ckbx
+  helper_newt_id
+  helper_osm_package
+  helper_prep_lc_run_ckbx
+  helper_sample_submissions_ckbx
+
 
 Validated column names in 295 model config DBs; no errors were found
