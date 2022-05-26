@@ -701,6 +701,9 @@ namespace DMSModelConfigDbUpdater
                     return false;
                 }
 
+                var filesProcessed = 0;
+                var lastProgress = DateTime.UtcNow;
+
                 // ReSharper disable once ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
                 foreach (var modelConfigDb in filesToProcess)
                 {
@@ -708,6 +711,17 @@ namespace DMSModelConfigDbUpdater
 
                     if (!success)
                         return false;
+
+                    filesProcessed++;
+                    if (DateTime.UtcNow.Subtract(lastProgress).TotalSeconds < 3)
+                        continue;
+
+                    var percentComplete = (double)filesProcessed / filesToProcess.Count * 100;
+
+                    Console.WriteLine();
+                    OnStatusEvent("{0:F0}% complete; {1} / {2} processed", percentComplete, filesProcessed, filesToProcess.Count);
+
+                    lastProgress = DateTime.UtcNow;
                 }
 
                 if (Options.ValidateColumnNamesWithDatabase)
