@@ -29,11 +29,6 @@ namespace DMSModelConfigDbUpdater
                        "If an empty string, updates files in-place")]
         public string OutputDirectory { get; set; }
 
-        [Option("DatabaseServer", "Server", HelpShowsDefault = true,
-            HelpText = "Server name to contact to validate form field names against columns in tables or views\n" +
-                       "Assumed to be SQL Server if UsePostgresSchema is false; otherwise, assume Postgres")]
-        public string DatabaseServer { get; set; }
-
         [Option("ViewColumnMap", "Map", "M", HelpShowsDefault = false, IsInputFilePath = true,
             HelpText = "View column map file (typically created by PgSqlViewCreatorHelper.exe)\n" +
                        "Tab-delimited file with three columns:\n" +
@@ -83,10 +78,15 @@ namespace DMSModelConfigDbUpdater
         [Option("ValidateColumnNames", "ValidateColumns", "Validate", HelpShowsDefault = true,
             HelpText = "When true, read column names used in each SQLite file and validate against the column names " +
                        "in the source tables or views for list reports, detail reports, and entry pages\n" +
-                       "When this is true, the name map files are not loaded, and no object renaming is performed")]
+                       "When this is true, the name map files are not loaded and no object renaming is performed")]
         public bool ValidateColumnNamesWithDatabase { get; set; }
 
-        [Option("SaveValidationResults", "WriteResults", "Save", HelpShowsDefault = true,
+        [Option("DatabaseServer", "Server", HelpShowsDefault = true,
+            HelpText = "Server name to contact to validate form field names against columns in tables or views\n" +
+                       "Assumed to be SQL Server if UsePostgresSchema is false; otherwise, assumes PostgreSQL")]
+        public string DatabaseServer { get; set; } = "Gigasax";
+
+        [Option("SaveValidationResults", "SaveValidation", "WriteResults", HelpShowsDefault = true,
             HelpText = "When true, save the validation results to a text file")]
         public bool SaveValidateResultsToFile { get; set; }
 
