@@ -30,7 +30,10 @@ namespace DMSModelConfigDbUpdater
 
                 UsageExamples =
                 {
-                    exeName + " DBName_after.sql /M:DBName_ColumnNameMap.txt"
+                    exeName + "  /I:. /O:UpdatedFiles /Map:DMS5_views_excerpt_RenamedColumns.txt",
+                    exeName + "  /I:. /Validate /WriteResults",
+                    exeName + "  /Conf:ModelConfigDbUpdaterOptions.conf",
+                    exeName + "  /Conf:ModelConfigDbValidationOptions.conf"
                 }
             };
 
