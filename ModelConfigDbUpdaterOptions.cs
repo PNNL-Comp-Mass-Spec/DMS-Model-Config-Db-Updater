@@ -12,7 +12,7 @@ namespace DMSModelConfigDbUpdater
         /// <summary>
         /// Program date
         /// </summary>
-        public const string PROGRAM_DATE = "May 25, 2022";
+        public const string PROGRAM_DATE = "May 26, 2022";
 
         [Option("InputDirectory", "Input", "I", ArgPosition = 1, HelpShowsDefault = false, IsInputFilePath = false,
             HelpText = "Directory with the DMS model config database files to update\n" +
@@ -133,43 +133,44 @@ namespace DMSModelConfigDbUpdater
                     ? "n/a: updating files in-place"
                     : PathUtils.CompactPathString(OutputDirectory, 80));
 
-            if (!ValidateColumnNamesWithDatabase)
-            {
-                Console.WriteLine(" {0,-30} {1}", "View Column Map File:", PathUtils.CompactPathString(ViewColumnMapFile, 80));
-
-                if (!string.IsNullOrWhiteSpace(TableNameMapFile))
-                {
-                    Console.WriteLine(" {0,-30} {1}", "Table Name Map File:", PathUtils.CompactPathString(TableNameMapFile, 80));
-                }
-
-                Console.WriteLine(" {0,-30} {1}", "Preview Updates:", PreviewUpdates);
-
-                Console.WriteLine(" {0,-30} {1}", "Quiet Mode:", QuietMode);
-
-                Console.WriteLine(" {0,-40} {1}", "Rename List Report View and Columns:", RenameListReportViewAndColumns);
-
-                Console.WriteLine(" {0,-40} {1}", "Rename Detail Report View and Columns:", RenameDetailReportViewAndColumns);
-
-                Console.WriteLine(" {0,-40} {1}", "Rename Entry Page View and Columns:", RenameEntryPageViewAndColumns);
-
-                Console.WriteLine(" {0,-40} {1}", "Rename Stored Procedures:", RenameStoredProcedures);
-            }
-
-            Console.WriteLine(" {0,-40} {1}", "Validate Column Names with DB:", ValidateColumnNamesWithDatabase);
-
             if (ValidateColumnNamesWithDatabase)
             {
-                Console.WriteLine(" {0,-40} {1}", "Save Validation Results to File:", SaveValidateResultsToFile);
+                Console.WriteLine(" {0,-30} {1}", "Validate Column Names with DB:", ValidateColumnNamesWithDatabase);
+
+                Console.WriteLine(" {0,-30} {1}", "Database server:", DatabaseServer);
+
+                Console.WriteLine(" {0,-30} {1}", "Save Validation Results:", SaveValidateResultsToFile);
 
                 if (SaveValidateResultsToFile)
                 {
                     var resultsFile = new FileInfo(ModelConfigDbUpdater.GetValidateResultsFilePath(InputDirectory, ValidateResultsFileName));
 
-                    Console.WriteLine(" {0,-40} {1}", "Validation Results File:", PathUtils.CompactPathString(resultsFile.FullName, 80));
+                    Console.WriteLine(" {0,-30} {1}", "Validation Results File:", PathUtils.CompactPathString(resultsFile.FullName, 80));
                 }
+
+                return;
             }
 
-            Console.WriteLine();
+            Console.WriteLine(" {0,-30} {1}", "View Column Map File:", PathUtils.CompactPathString(ViewColumnMapFile, 80));
+
+            if (!string.IsNullOrWhiteSpace(TableNameMapFile))
+            {
+                Console.WriteLine(" {0,-30} {1}", "Table Name Map File:", PathUtils.CompactPathString(TableNameMapFile, 80));
+            }
+
+            Console.WriteLine(" {0,-30} {1}", "Preview Updates:", PreviewUpdates);
+
+            Console.WriteLine(" {0,-30} {1}", "Quiet Mode:", QuietMode);
+
+            Console.WriteLine(" {0,-40} {1}", "Rename List Report View and Columns:", RenameListReportViewAndColumns);
+
+            Console.WriteLine(" {0,-40} {1}", "Rename Detail Report View and Columns:", RenameDetailReportViewAndColumns);
+
+            Console.WriteLine(" {0,-40} {1}", "Rename Entry Page View and Columns:", RenameEntryPageViewAndColumns);
+
+            Console.WriteLine(" {0,-40} {1}", "Rename Stored Procedures:", RenameStoredProcedures);
+
+            Console.WriteLine(" {0,-40} {1}", "Validate Column Names with DB:", ValidateColumnNamesWithDatabase);
         }
 
         /// <summary>

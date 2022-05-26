@@ -69,6 +69,7 @@ namespace DMSModelConfigDbUpdater
                 }
 
                 options.OutputSetOptions();
+                Console.WriteLine();
             }
             catch (Exception e)
             {
