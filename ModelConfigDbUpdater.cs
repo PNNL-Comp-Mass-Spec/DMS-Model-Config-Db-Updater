@@ -2072,8 +2072,19 @@ namespace DMSModelConfigDbUpdater
 
                         if (!ValidationNameCache.DatabaseColumnsByPageFamily.TryGetValue(externalPageFamily, out var externalPageFamilyInfo))
                         {
+                            if (externalPageFamily.Equals("predefined_analysis_preview") ||
+                                externalPageFamily.Equals("predefined_analysis_preview_mds"))
+                            {
+                                Console.WriteLine();
+                                OnStatusEvent(
+                                    "Ignoring missing external source referenced by page family '{0}' since expected: {1}",
+                                    pageFamily.Key, externalPageFamily);
+
+                                continue;
+                            }
+
                             ShowWarning(
-                                "Page family {0} not found in the validation name cache; cannot validate external sources for page family {1}",
+                                "Page family '{0}' not found in the validation name cache; cannot validate external sources for page family '{1}'",
                                 externalPageFamily, pageFamily.Key);
 
                             continue;
@@ -2087,7 +2098,7 @@ namespace DMSModelConfigDbUpdater
                             if (!matchFound)
                             {
                                 ShowWarning(
-                                    "Page family {0} references column {1} in page family {2}, but the column was not found in the validation name cache",
+                                    "Page family '{0}' references column '{1}' in page family '{2}', but the column was not found in the validation name cache",
                                     pageFamily.Key, sourceColumn, externalPageFamily);
                             }
                         }
