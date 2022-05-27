@@ -86,31 +86,20 @@ namespace DMSModelConfigDbUpdater
         public string CurrentConfigDB { get; set; }
 
         /// <summary>
-        /// Keys are list report helper names, values are usage counts
-        /// </summary>
-        /// <remarks>
-        /// List report helpers are referenced by form field choosers of type list-report.helper
-        /// </remarks>
-        internal Dictionary<string, int> ListReportHelperUsage { get; }
-
-        /// <summary>
         /// Processing options
         /// </summary>
         public ModelConfigDbUpdaterOptions Options { get; }
-
-        /// <summary>
-        /// Keys are pick list names, values are usage counts
-        /// </summary>
-        /// <remarks>
-        /// Pick lists are referenced by form field choosers of type picker.append, picker.list, etc.
-        /// </remarks>
-        internal Dictionary<string, int> PickListChooserUsage { get; }
 
         /// <summary>
         /// Utility queries (aka ad hoc queries) loaded from ad_hoc_query.db
         /// </summary>
         /// <remarks>Only used when validating field names</remarks>
         internal Dictionary<string, UtilityQueryDefinition> UtilityQueryDefinitions { get; }
+
+        /// <summary>
+        /// This object tracks three dictionaries used to track references between page families
+        /// </summary>
+        internal CachedNameContainer ValidationNameCache { get; }
 
         /// <summary>
         /// Constructor
@@ -124,11 +113,9 @@ namespace DMSModelConfigDbUpdater
 
             ChooserDefinitions = new Dictionary<string, ChooserDefinition>(StringComparer.OrdinalIgnoreCase);
 
-            ListReportHelperUsage = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-
-            PickListChooserUsage = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-
             UtilityQueryDefinitions = new Dictionary<string, UtilityQueryDefinition>(StringComparer.OrdinalIgnoreCase);
+
+            ValidationNameCache = new CachedNameContainer();
 
             mViewColumnNameMap = new Dictionary<string, Dictionary<string, ColumnNameInfo>>(StringComparer.OrdinalIgnoreCase);
 

@@ -70,6 +70,7 @@
     <Compile Include="StoredProcArgumentInfo.cs" />
     <Compile Include="StoredProcColumnNames.cs" />
     <Compile Include="UtilityQueryDefinition.cs" />
+    <Compile Include="CachedNameContainer.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
