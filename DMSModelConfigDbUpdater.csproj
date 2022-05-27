@@ -54,6 +54,7 @@
     <Compile Include="ColumnNameInfo.cs" />
     <Compile Include="BasicField.cs" />
     <Compile Include="DatabaseColumnInfo.cs" />
+    <Compile Include="ExternalSourceInfo.cs" />
     <Compile Include="FormFieldChooserInfo.cs" />
     <Compile Include="FormFieldInfo.cs" />
     <Compile Include="GeneralParameters.cs" />
@@ -63,9 +64,11 @@
     <Compile Include="ModelConfigDbUpdater.cs" />
     <Compile Include="ModelConfigDbUpdaterOptions.cs" />
     <Compile Include="ModelConfigDbValidator.cs" />
+    <Compile Include="PageFamilyColumnInfo.cs" />
     <Compile Include="PrimaryFilterInfo.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ExternalSourceColumnInfo.cs" />
     <Compile Include="SQLiteUtilities.cs" />
     <Compile Include="StoredProcArgumentInfo.cs" />
     <Compile Include="StoredProcColumnNames.cs" />

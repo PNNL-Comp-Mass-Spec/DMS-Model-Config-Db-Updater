@@ -52,6 +52,11 @@ namespace DMSModelConfigDbUpdater
         private readonly ModelConfigDbUpdaterOptions mOptions;
 
         /// <summary>
+        /// Current page family name
+        /// </summary>
+        private string CurrentPageFamily => Path.GetFileNameWithoutExtension(mDbUpdater.CurrentConfigDB);
+
+        /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="dbUpdater">Model Config DB Updater instance</param>
@@ -243,7 +248,7 @@ namespace DMSModelConfigDbUpdater
         /// <returns>True if allowed to be missing, otherwise false</returns>
         private bool IgnoreMissingColumn(string tableOrView, string columnName)
         {
-            if (!mMissingColumnsToIgnore.TryGetValue(Path.GetFileNameWithoutExtension(mDbUpdater.CurrentConfigDB), out var tablesAndViews))
+            if (!mMissingColumnsToIgnore.TryGetValue(CurrentPageFamily, out var tablesAndViews))
                 return false;
 
             return tablesAndViews.TryGetValue(tableOrView, out var columnsToIgnore) && columnsToIgnore.Contains(columnName);
@@ -344,6 +349,74 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
+        private void StoreSourceColumn(
+            IDictionary<string, SortedSet<string>> columnsBySourcePage,
+            ExternalSourceInfo externalSource,
+            ref int errorCount)
+        {
+            if (string.IsNullOrWhiteSpace(externalSource.SourcePage))
+            {
+                OnWarningEvent(
+                    "{0,-25} External source with ID {1}, type {2} does not have a source page defined",
+                    mDbUpdater.CurrentConfigDB + ":",
+                    externalSource.ID,
+                    externalSource.SourceType);
+
+                errorCount++;
+                return;
+            }
+
+            if (!externalSource.SourceType.Equals("ColName") &&
+                !externalSource.SourceType.Equals("Literal") &&
+                !externalSource.SourceType.Equals("PostName") &&
+                !externalSource.SourceType.Equals("ColName.action.Scrub"))
+            {
+                OnWarningEvent(
+                    "{0,-25} External source with ID {1} does not have source type ColName or Literal: {2}",
+                    mDbUpdater.CurrentConfigDB + ":",
+                    externalSource.ID,
+                    externalSource.SourceType);
+
+                errorCount++;
+            }
+
+            if (externalSource.SourceType.Equals("Literal", StringComparison.OrdinalIgnoreCase))
+            {
+                // String value instead of column name
+                // This value will be stored in the target form field when populating the entry page with data from the source page
+                // Do not store it in columnsBySourcePage
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(externalSource.SourceColumn))
+            {
+                OnWarningEvent(
+                    "{0,-25} External source with ID {1} has an empty source column name and is type {2} instead of Literal; this may be incorrect",
+                    mDbUpdater.CurrentConfigDB + ":",
+                    externalSource.ID,
+                    externalSource.SourceType);
+
+                errorCount++;
+                return;
+            }
+
+            SortedSet<string> sourceColumns;
+            if (columnsBySourcePage.TryGetValue(externalSource.SourcePage, out var sourcePageColumns))
+            {
+                sourceColumns = sourcePageColumns;
+            }
+            else
+            {
+                sourceColumns = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+                columnsBySourcePage.Add(externalSource.SourcePage, sourceColumns);
+            }
+
+            if (!sourceColumns.Contains(externalSource.SourceColumn))
+            {
+                sourceColumns.Add(externalSource.SourceColumn);
+            }
+        }
+
         /// <summary>
         /// Examine column names to look for mismatches vs. column names in the referenced tables and views
         /// </summary>
@@ -404,7 +477,7 @@ namespace DMSModelConfigDbUpdater
             {
                 var detailReportHotlinks = mDbUpdater.ReadHotlinks(ModelConfigDbUpdater.DB_TABLE_DETAIL_REPORT_HOTLINKS);
 
-                return ValidateHotLinks(GeneralParameters.ParameterType.DetailReportView, detailReportHotlinks, ref errorCount);
+                return ValidateHotlinks(GeneralParameters.ParameterType.DetailReportView, detailReportHotlinks, ref errorCount, true);
             }
             catch (Exception ex)
             {
@@ -457,9 +530,35 @@ namespace DMSModelConfigDbUpdater
                 if (!externalSourcesLoaded)
                     return true;
 
+                var columnsBySourcePage = new Dictionary<string, SortedSet<string>>(StringComparer.OrdinalIgnoreCase);
+
                 foreach (var externalSource in externalSources)
                 {
                     ValidateBasicField("External source", externalSource, ref errorCount, out _);
+
+                    StoreSourceColumn(columnsBySourcePage, externalSource, ref errorCount);
+                }
+
+                if (columnsBySourcePage.Count == 0)
+                    return true;
+
+                // Cache the external source columns
+
+                ExternalSourceColumnInfo cachedSourcePageInfo;
+
+                if (mDbUpdater.ValidationNameCache.ExternalSourceReferences.TryGetValue(CurrentPageFamily, out var existingSourceInfo))
+                {
+                    cachedSourcePageInfo = existingSourceInfo;
+                }
+                else
+                {
+                    cachedSourcePageInfo = new ExternalSourceColumnInfo(CurrentPageFamily);
+                    mDbUpdater.ValidationNameCache.ExternalSourceReferences.Add(CurrentPageFamily, cachedSourcePageInfo);
+                }
+
+                foreach (var sourcePage in columnsBySourcePage)
+                {
+                    cachedSourcePageInfo.AddExternalSourceColumns(sourcePage.Key, sourcePage.Value);
                 }
 
                 return true;
@@ -601,8 +700,6 @@ namespace DMSModelConfigDbUpdater
                             errorCount++;
                             break;
                     }
-
-
                 }
 
                 return true;
@@ -762,11 +859,11 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        private bool ValidateHotLinks(GeneralParameters.ParameterType sourceViewParameter, List<HotLinkInfo> hotlinks, ref int errorCount)
+        private bool ValidateHotlinks(GeneralParameters.ParameterType sourceViewParameter, List<HotLinkInfo> hotlinks, ref int errorCount, bool cacheSourceColumnNames = false)
         {
             try
             {
-                if (hotlinks.Count == 0)
+                if (hotlinks.Count == 0 && !cacheSourceColumnNames)
                     return true;
 
                 var sourceTableOrView = mGeneralParams.Parameters[sourceViewParameter];
@@ -790,6 +887,14 @@ namespace DMSModelConfigDbUpdater
                 {
                     dataSourceType = sourceTableOrView.StartsWith("T_", StringComparison.OrdinalIgnoreCase) ? "table" : "view";
                     sourceTableViewOrProcedureName = sourceTableOrView;
+
+                    if (sourceTableOrView.Equals("V_@@@_Detail_Report"))
+                    {
+                        // This is a special placeholder view in new.db
+                        // It does not have any column names to cache
+                        return true;
+                    }
+
                     storedProcedureDataSource = false;
                 }
                 else if (!string.IsNullOrWhiteSpace(sourceStoredProcedure))
@@ -800,12 +905,20 @@ namespace DMSModelConfigDbUpdater
                 }
                 else
                 {
-                    OnWarningEvent(
-                        "{0,-25} {1} hotlinks are defined, but the source table, view, or stored procedure is not defined",
-                        mDbUpdater.CurrentConfigDB + ":",
-                        reportType);
+                    // Source view or stored procedure not defined
+                    // This is the case for numerous entry pages
 
-                    errorCount++;
+                    // ReSharper disable once InvertIf
+                    if (hotlinks.Count > 0)
+                    {
+                        OnWarningEvent(
+                            "{0,-25} {1} hotlinks are defined, but the source table, view, or stored procedure is not defined",
+                            mDbUpdater.CurrentConfigDB + ":",
+                            reportType);
+
+                        errorCount++;
+                    }
+
                     return true;
                 }
 
@@ -828,124 +941,157 @@ namespace DMSModelConfigDbUpdater
                 else
                 {
                     OnWarningEvent(
-                        "{0,-25} {1} not found in database {2}; cannot validate hotlinks",
+                        "{0,-25} {1} not found in database {2}; cannot {3}",
                         mDbUpdater.CurrentConfigDB + ":",
                         GetTableOrViewDescription(sourceTableViewOrProcedureName, true),
-                        targetDatabase);
+                        targetDatabase,
+                        hotlinks.Count > 0 ? "validate hotlinks" : "cache the source data columns");
 
                     errorCount++;
                     return true;
                 }
 
-                // This sorted set is used to check for duplicates
-                var fieldNames = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
-
-                foreach (var item in hotlinks)
+                if (cacheSourceColumnNames)
                 {
-                    if (fieldNames.Contains(item.FieldName))
-                    {
-                        OnWarningEvent(
-                            "{0,-25} Two {1} hotlinks have the same name: {2}",
-                            mDbUpdater.CurrentConfigDB + ":",
-                            reportType.ToLower(),
-                            item.FieldName);
+                    PageFamilyColumnInfo cachedDatabaseColumnInfo;
 
-                        errorCount++;
+                    if (mDbUpdater.ValidationNameCache.DatabaseColumnsByPageFamily.TryGetValue(CurrentPageFamily, out var existingCachedInfo))
+                    {
+                        cachedDatabaseColumnInfo = existingCachedInfo;
                     }
                     else
                     {
-                        fieldNames.Add(item.FieldName);
+                        cachedDatabaseColumnInfo = new PageFamilyColumnInfo(CurrentPageFamily);
+                        mDbUpdater.ValidationNameCache.DatabaseColumnsByPageFamily.Add(CurrentPageFamily, cachedDatabaseColumnInfo);
                     }
 
-                    var columnName = mDbUpdater.GetCleanFieldName(item.FieldName, out _);
-
-                    var validColumn = false;
-
-                    // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
-                    foreach (var dbColumn in columnNames)
+                    if (!cachedDatabaseColumnInfo.DatabaseColumnNames.ContainsKey(sourceTableViewOrProcedureName))
                     {
-                        if (!columnName.Equals(dbColumn, StringComparison.OrdinalIgnoreCase))
-                        {
-                            continue;
-                        }
-
-                        if (columnName.Equals(dbColumn, StringComparison.Ordinal))
-                        {
-                            validColumn = true;
-                            break;
-                        }
-
-                        OnWarningEvent(
-                            "{0,-25} {1} hotlink {2} has a mismatched case vs. the column name in the source {3}: {4}",
-                            mDbUpdater.CurrentConfigDB + ":",
-                            reportType,
-                            columnName,
-                            dataSourceType,
-                            dbColumn);
-
-                        errorCount++;
-                        break;
+                        cachedDatabaseColumnInfo.DatabaseColumnNames.Add(sourceTableViewOrProcedureName, columnNames);
                     }
-
-                    if (validColumn)
-                        continue;
-
-                    if (columnName.Equals("Sel."))
-                    {
-                        if (mDbUpdater.CurrentConfigDB.Equals("analysis_job_processor_group_association.db") ||
-                            mDbUpdater.CurrentConfigDB.Equals("analysis_job_processor_group_membership.db") ||
-                            mDbUpdater.CurrentConfigDB.Equals("z"))
-                        {
-                            continue;
-                        }
-
-                        Console.WriteLine("Possibly ignore the 'Sel.' column in " + mDbUpdater.CurrentConfigDB);
-                    }
-
-                    if (columnName.Equals("Sel"))
-                    {
-                        if (mDbUpdater.CurrentConfigDB.Equals("eus_users.db") ||
-                            mDbUpdater.CurrentConfigDB.StartsWith("helper_") ||
-                            mDbUpdater.CurrentConfigDB.Equals("lc_cart_request_loading.db") ||
-                            mDbUpdater.CurrentConfigDB.Equals("material_move_items.db") ||
-                            mDbUpdater.CurrentConfigDB.Equals("mc_enable_control_by_manager.db") ||
-                            mDbUpdater.CurrentConfigDB.Equals("mc_enable_control_by_manager_type.db") ||
-                            mDbUpdater.CurrentConfigDB.Equals("requested_run_admin.db"))
-                        {
-                            continue;
-                        }
-
-                        Console.WriteLine("Possibly ignore the 'Sel.' column in " + mDbUpdater.CurrentConfigDB);
-                    }
-
-                    if (columnName.Equals("@exclude"))
-                    {
-                        // The Requested Run Factors parameter-based list report and the Requested Run Batch Blocking grid report
-                        // use a special hotlink named @exclude to define the columns that are read-only and thus cannot be edited
-                        continue;
-                    }
-
-                    if (item.FieldName.Equals("Download") && mDbUpdater.CurrentConfigDB.Equals("mrm_list_attachment.db"))
-                    {
-                        continue;
-                    }
-
-                    OnWarningEvent(
-                        "{0,-25} {1} hotlink {2} was not found in source {3}",
-                        mDbUpdater.CurrentConfigDB + ":",
-                        reportType,
-                        columnName,
-                        GetTableOrViewDescription(sourceTableViewOrProcedureName, false, storedProcedureDataSource));
-
-                    errorCount++;
                 }
+
+                ValidateHotlinks(reportType, dataSourceType, sourceTableViewOrProcedureName, storedProcedureDataSource, hotlinks, columnNames, ref errorCount);
 
                 return true;
             }
             catch (Exception ex)
             {
-                OnErrorEvent("Error in ValidateHotLinks", ex);
+                OnErrorEvent("Error in ValidateHotlinks", ex);
                 return false;
+            }
+        }
+
+        private void ValidateHotlinks(
+            string reportType,
+            string dataSourceType,
+            string sourceTableViewOrProcedureName,
+            bool storedProcedureDataSource,
+            List<HotLinkInfo> hotlinks,
+            SortedSet<string> columnNames,
+            ref int errorCount)
+        {
+            // This sorted set is used to check for duplicates
+            var fieldNames = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var item in hotlinks)
+            {
+                if (fieldNames.Contains(item.FieldName))
+                {
+                    OnWarningEvent(
+                        "{0,-25} Two {1} hotlinks have the same name: {2}",
+                        mDbUpdater.CurrentConfigDB + ":",
+                        reportType.ToLower(),
+                        item.FieldName);
+
+                    errorCount++;
+                }
+                else
+                {
+                    fieldNames.Add(item.FieldName);
+                }
+
+                var columnName = mDbUpdater.GetCleanFieldName(item.FieldName, out _);
+
+                var validColumn = false;
+
+                // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+                foreach (var dbColumn in columnNames)
+                {
+                    if (!columnName.Equals(dbColumn, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    if (columnName.Equals(dbColumn, StringComparison.Ordinal))
+                    {
+                        validColumn = true;
+                        break;
+                    }
+
+                    OnWarningEvent(
+                        "{0,-25} {1} hotlink {2} has a mismatched case vs. the column name in the source {3}: {4}",
+                        mDbUpdater.CurrentConfigDB + ":",
+                        reportType,
+                        columnName,
+                        dataSourceType,
+                        dbColumn);
+
+                    errorCount++;
+                    break;
+                }
+
+                if (validColumn)
+                    continue;
+
+                if (columnName.Equals("Sel."))
+                {
+                    if (mDbUpdater.CurrentConfigDB.Equals("analysis_job_processor_group_association.db") ||
+                        mDbUpdater.CurrentConfigDB.Equals("analysis_job_processor_group_membership.db") ||
+                        mDbUpdater.CurrentConfigDB.Equals("z"))
+                    {
+                        continue;
+                    }
+
+                    Console.WriteLine("Possibly ignore the 'Sel.' column in " + mDbUpdater.CurrentConfigDB);
+                }
+
+                if (columnName.Equals("Sel"))
+                {
+                    if (mDbUpdater.CurrentConfigDB.Equals("eus_users.db") ||
+                        mDbUpdater.CurrentConfigDB.StartsWith("helper_") ||
+                        mDbUpdater.CurrentConfigDB.Equals("lc_cart_request_loading.db") ||
+                        mDbUpdater.CurrentConfigDB.Equals("material_move_items.db") ||
+                        mDbUpdater.CurrentConfigDB.Equals("mc_enable_control_by_manager.db") ||
+                        mDbUpdater.CurrentConfigDB.Equals("mc_enable_control_by_manager_type.db") ||
+                        mDbUpdater.CurrentConfigDB.Equals("requested_run_admin.db"))
+                    {
+                        continue;
+                    }
+
+                    Console.WriteLine("Possibly ignore the 'Sel.' column in " + mDbUpdater.CurrentConfigDB);
+                }
+
+                if (columnName.Equals("@exclude"))
+                {
+                    // The Requested Run Factors parameter-based list report and the Requested Run Batch Blocking grid report
+                    // use a special hotlink named @exclude to define the columns that are read-only and thus cannot be edited
+                    continue;
+                }
+
+                if (item.FieldName.Equals("Download") && mDbUpdater.CurrentConfigDB.Equals("mrm_list_attachment.db"))
+                {
+                    continue;
+                }
+
+                OnWarningEvent(
+                    "{0,-25} {1} hotlink {2} was not found in source {3}",
+                    mDbUpdater.CurrentConfigDB + ":",
+                    reportType,
+                    columnName,
+                    GetTableOrViewDescription(sourceTableViewOrProcedureName, false, storedProcedureDataSource));
+
+                errorCount++;
             }
         }
 
@@ -1030,13 +1176,13 @@ namespace DMSModelConfigDbUpdater
                 errorCount++;
             }
 
-            if (mDbUpdater.ListReportHelperUsage.TryGetValue(helperName, out var usageCount))
+            if (mDbUpdater.ValidationNameCache.ListReportHelperUsage.TryGetValue(helperName, out var usageCount))
             {
-                mDbUpdater.ListReportHelperUsage[helperName] = usageCount + 1;
+                mDbUpdater.ValidationNameCache.ListReportHelperUsage[helperName] = usageCount + 1;
             }
             else
             {
-                mDbUpdater.ListReportHelperUsage.Add(helperName, 1);
+                mDbUpdater.ValidationNameCache.ListReportHelperUsage.Add(helperName, 1);
             }
         }
 
@@ -1051,7 +1197,7 @@ namespace DMSModelConfigDbUpdater
             {
                 var listReportHotlinks = mDbUpdater.ReadHotlinks(ModelConfigDbUpdater.DB_TABLE_LIST_REPORT_HOTLINKS);
 
-                return ValidateHotLinks(GeneralParameters.ParameterType.ListReportView, listReportHotlinks, ref errorCount);
+                return ValidateHotlinks(GeneralParameters.ParameterType.ListReportView, listReportHotlinks, ref errorCount);
             }
             catch (Exception ex)
             {
@@ -1132,13 +1278,13 @@ namespace DMSModelConfigDbUpdater
                     }
                 }
 
-                if (mDbUpdater.PickListChooserUsage.TryGetValue(pickListName, out var usageCount))
+                if (mDbUpdater.ValidationNameCache.PickListChooserUsage.TryGetValue(pickListName, out var usageCount))
                 {
-                    mDbUpdater.PickListChooserUsage[pickListName] = usageCount + 1;
+                    mDbUpdater.ValidationNameCache.PickListChooserUsage[pickListName] = usageCount + 1;
                 }
                 else
                 {
-                    mDbUpdater.PickListChooserUsage.Add(pickListName, 1);
+                    mDbUpdater.ValidationNameCache.PickListChooserUsage.Add(pickListName, 1);
                 }
             }
 

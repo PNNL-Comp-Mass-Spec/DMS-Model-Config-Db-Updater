@@ -758,7 +758,7 @@ namespace DMSModelConfigDbUpdater
                 var filesProcessed = 0;
                 var lastProgress = DateTime.UtcNow;
 
-                // ReSharper disable once ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
+                // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
                 foreach (var modelConfigDb in filesToProcess)
                 {
                     var success = ProcessFile(modelConfigDb);
@@ -780,8 +780,11 @@ namespace DMSModelConfigDbUpdater
 
                 if (Options.ValidateColumnNamesWithDatabase)
                 {
-                    if (filesProcessed > 100)
+                    ValidateExternalSources();
+
+                    if (filesProcessed >= 100)
                     {
+                        // Only validate choosers if at least 100 files were processed
                         ValidateFormFieldChooserUsage();
                         ValidateListReportHelperUsage();
                     }
@@ -963,9 +966,9 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        internal bool ReadExternalSources(out List<BasicField> externalSources)
+        internal bool ReadExternalSources(out List<ExternalSourceInfo> externalSources)
         {
-            externalSources = new List<BasicField>();
+            externalSources = new List<ExternalSourceInfo>();
 
             try
             {
@@ -974,7 +977,7 @@ namespace DMSModelConfigDbUpdater
 
                 using var dbCommand = mDbConnectionReader.CreateCommand();
 
-                dbCommand.CommandText = "SELECT id, field FROM external_sources";
+                dbCommand.CommandText = "SELECT id, field, source_page, type, value FROM external_sources";
 
                 using var reader = dbCommand.ExecuteReader();
 
@@ -982,8 +985,11 @@ namespace DMSModelConfigDbUpdater
                 {
                     var id = SQLiteUtilities.GetInt32(reader, "id");
                     var formField = SQLiteUtilities.GetString(reader, "field");
+                    var sourcePage = SQLiteUtilities.GetString(reader, "source_page");
+                    var sourceDataType = SQLiteUtilities.GetString(reader, "type");
+                    var sourcePageColumn = SQLiteUtilities.GetString(reader, "value");
 
-                    externalSources.Add(new BasicField(id, formField));
+                    externalSources.Add(new ExternalSourceInfo(id, formField, sourcePage, sourcePageColumn, sourceDataType));
                 }
 
                 return true;
@@ -2054,69 +2060,123 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
+        private void ValidateExternalSources()
+        {
+            try
+            {
+                foreach (var pageFamily in ValidationNameCache.ExternalSourceReferences)
+                {
+                    foreach (var sourcePage in pageFamily.Value.ExternalSources)
+                    {
+                        var externalPageFamily = sourcePage.Key;
+
+                        if (!ValidationNameCache.DatabaseColumnsByPageFamily.TryGetValue(externalPageFamily, out var externalPageFamilyInfo))
+                        {
+                            ShowWarning(
+                                "Page family {0} not found in the validation name cache; cannot validate external sources for page family {1}",
+                                externalPageFamily, pageFamily.Key);
+
+                            continue;
+                        }
+
+                        // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+                        foreach (var sourceColumn in sourcePage.Value)
+                        {
+                            var matchFound = externalPageFamilyInfo.DatabaseColumnNames.Any(databaseObject => databaseObject.Value.Contains(sourceColumn));
+
+                            if (!matchFound)
+                            {
+                                ShowWarning(
+                                    "Page family {0} references column {1} in page family {2}, but the column was not found in the validation name cache",
+                                    pageFamily.Key, sourceColumn, externalPageFamily);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in ValidateExternalSources", ex);
+            }
+        }
+
         private void ValidateFormFieldChooserUsage()
         {
-            var unusedChoosers = new SortedSet<string>();
-
-            foreach (var chooser in ChooserDefinitions)
+            try
             {
-                if (!PickListChooserUsage.TryGetValue(chooser.Key, out var chooserUsage) || chooserUsage == 0)
+                var unusedChoosers = new SortedSet<string>();
+
+                foreach (var chooser in ChooserDefinitions)
                 {
-                    unusedChoosers.Add(chooser.Key);
+                    if (!ValidationNameCache.PickListChooserUsage.TryGetValue(chooser.Key, out var chooserUsage) || chooserUsage == 0)
+                    {
+                        unusedChoosers.Add(chooser.Key);
+                    }
+                }
+
+                if (unusedChoosers.Count > 0)
+                {
+                    ShowWarning("Pick list choosers not used by any of the validated model config DBs:");
+                    ShowWarning("  {0}", string.Join("\n  ", unusedChoosers));
+                }
+
+                foreach (var chooser in ValidationNameCache.PickListChooserUsage)
+                {
+                    if (!ChooserDefinitions.ContainsKey(chooser.Key))
+                    {
+                        ShowWarning(
+                            "One of the validated model config DBs referenced pick list chooser {0}, " +
+                            "but that chooser is not defined in dms_chooser.db", chooser.Key);
+                    }
                 }
             }
-
-            if (unusedChoosers.Count > 0)
+            catch (Exception ex)
             {
-                OnValidationResultsWarningEvent("Pick list choosers not used by any of the validated model config DBs:");
-                OnValidationResultsWarningEvent(string.Format("  {0}", string.Join("\n  ", unusedChoosers)));
-            }
-
-            foreach (var chooser in PickListChooserUsage)
-            {
-                if (!ChooserDefinitions.ContainsKey(chooser.Key))
-                {
-                    OnValidationResultsWarningEvent(string.Format(
-                        "One of the validated model config DBs referenced pick list chooser {0}, " +
-                        "but that chooser is not defined in dms_chooser.db", chooser.Key));
-                }
+                OnErrorEvent("Error in ValidateFormFieldChooserUsage", ex);
             }
         }
 
         private void ValidateListReportHelperUsage()
         {
-            var unusedHelpers = new SortedSet<string>();
-
-            var inputDirectory = new DirectoryInfo(Options.InputDirectory);
-            var listReportHelpers = new SortedSet<string>();
-
-            foreach (var helperFile in inputDirectory.GetFiles("helper_*.db"))
+            try
             {
-                listReportHelpers.Add(Path.GetFileNameWithoutExtension(helperFile.Name));
-            }
+                var unusedHelpers = new SortedSet<string>();
 
-            foreach (var helperName in listReportHelpers)
-            {
-                if (!ListReportHelperUsage.TryGetValue(helperName, out var helperUsage) || helperUsage == 0)
+                var inputDirectory = new DirectoryInfo(Options.InputDirectory);
+                var listReportHelpers = new SortedSet<string>();
+
+                foreach (var helperFile in inputDirectory.GetFiles("helper_*.db"))
                 {
-                    unusedHelpers.Add(helperName);
+                    listReportHelpers.Add(Path.GetFileNameWithoutExtension(helperFile.Name));
+                }
+
+                foreach (var helperName in listReportHelpers)
+                {
+                    if (!ValidationNameCache.ListReportHelperUsage.TryGetValue(helperName, out var helperUsage) || helperUsage == 0)
+                    {
+                        unusedHelpers.Add(helperName);
+                    }
+                }
+
+                if (unusedHelpers.Count > 0)
+                {
+                    ShowWarning("List report helpers not used by any of the validated model config DBs:");
+                    ShowWarning("  {0}", string.Join("\n  ", unusedHelpers));
+                }
+
+                foreach (var helper in ValidationNameCache.ListReportHelperUsage)
+                {
+                    if (!listReportHelpers.Contains(helper.Key))
+                    {
+                        ShowWarning(
+                            "One of the validated model config DBs referenced list report helper {0}, " +
+                            "but that helper is not a page family on the DMS website (no .db file)", helper.Key);
+                    }
                 }
             }
-
-            if (unusedHelpers.Count > 0)
+            catch (Exception ex)
             {
-                OnValidationResultsWarningEvent("List report helpers not used by any of the validated model config DBs:");
-                OnValidationResultsWarningEvent(string.Format("  {0}", string.Join("\n  ", unusedHelpers)));
-            }
-
-            foreach (var helper in ListReportHelperUsage)
-            {
-                if (!listReportHelpers.Contains(helper.Key))
-                {
-                    OnValidationResultsWarningEvent(string.Format(
-                        "One of the validated model config DBs referenced list report helper {0}, " +
-                        "but that helper is not a page family on the DMS website (no .db file)", helper.Key));
-                }
+                OnErrorEvent("Error in ValidateListReportHelperUsage", ex);
             }
         }
 
