@@ -12,6 +12,12 @@ namespace DMSModelConfigDbUpdater
 
         // ReSharper enable CommentTypo
 
+        /// <summary>
+        /// Get the expected column names for the data table returned by the given stored procedure
+        /// </summary>
+        /// <param name="storedProcedureName">Stored procedure name</param>
+        /// <param name="columnNames">Output: list of column names</param>
+        /// <returns>True if a valid stored procedure name, false if not recognized</returns>
         public static bool GetColumns(string storedProcedureName, out List<string> columnNames)
         {
             columnNames = storedProcedureName switch

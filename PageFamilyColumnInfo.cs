@@ -6,11 +6,19 @@ namespace DMSModelConfigDbUpdater
     internal class PageFamilyColumnInfo
     {
         /// <summary>
-        /// Dictionary tracking column names from the source database objects (typically the user friendly detail report names)
+        /// Dictionary tracking column names from the source database objects
         /// </summary>
         /// <remarks>
-        /// Keys are table, view, or stored procedure names
-        /// Values are the column names in the object
+        /// <para>
+        /// Keys are table, view, or stored procedure names used to obtain data for the web page
+        /// Values are the column names for the data returned by the table, view, or stored procedure
+        /// </para>
+        /// <para>
+        /// For detail report pages, the column names are the user friendly detail report view column names
+        /// </para>
+        /// <para>
+        /// For param report pages backed by a stored procedure, the column names are those of the data table returned by the procedure
+        /// </para>
         /// </remarks>
         public Dictionary<string, SortedSet<string>> DatabaseColumnNames { get; }
 
