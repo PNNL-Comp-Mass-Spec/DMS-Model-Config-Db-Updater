@@ -145,10 +145,10 @@ namespace DMSModelConfigDbUpdater
                     "assigned_processor",
                     "associated_processor_group",
                     "propagation_mode",
-                    // ReSharper disable StringLiteralTypo
-                    "parm_file",
+                    "param_file",
                     "settings_file",
                     "organism",
+                    // ReSharper disable StringLiteralTypo
                     "prot_coll_name_list",
                     "prot_coll_options_list",
                     // ReSharper restore StringLiteralTypo

@@ -8,7 +8,7 @@ namespace DMSModelConfigDbUpdater
     {
         // ReSharper disable CommentTypo
 
-        // Ignore Spelling: Crit, Excl, Labelling, Lvl, Parm, Pri, Proc, Prot, Sel, Sep
+        // Ignore Spelling: Crit, Excl, Labelling, Lvl, Pri, Proc, Prot, Sel, Sep
 
         // ReSharper enable CommentTypo
 
@@ -135,7 +135,7 @@ namespace DMSModelConfigDbUpdater
                     "Separation Type Crit.",
                     "ScanCount Min",
                     "ScanCount Max",
-                    "Parm File",
+                    "Param File",
                     "Settings File",
                     // "Organism",
                     "Organism DB",
