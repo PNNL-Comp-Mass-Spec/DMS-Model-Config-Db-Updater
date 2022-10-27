@@ -1409,9 +1409,27 @@ namespace DMSModelConfigDbUpdater
                 if (string.IsNullOrWhiteSpace(viewNameToUse))
                     return string.Empty;
 
-                if (ColumnRenamed(viewNameToUse, generalParams.Parameters[GeneralParameters.ParameterType.ListReportSortColumn], out var columnNameToUse))
+                var listReportSortColumns = new List<string>();
+                var storeNewValue = false;
+
+                foreach (var value in generalParams.Parameters[GeneralParameters.ParameterType.ListReportSortColumn].Split(','))
                 {
-                    UpdateGeneralParameter(generalParams, GeneralParameters.ParameterType.ListReportSortColumn, columnNameToUse);
+                    if (ColumnRenamed("List Report", viewNameToUse, value.Trim(), out var columnNameToUse))
+                    {
+                        listReportSortColumns.Add(columnNameToUse);
+                        storeNewValue = true;
+                    }
+                    else
+                    {
+                        listReportSortColumns.Add(value.Trim());
+                    }
+                }
+
+                if (storeNewValue)
+                {
+                    var updatedSortColumns = string.Join(", ", listReportSortColumns);
+
+                    UpdateGeneralParameter(generalParams, GeneralParameters.ParameterType.ListReportSortColumn, updatedSortColumns);
                 }
 
                 if (!string.IsNullOrWhiteSpace(generalParams.Parameters[GeneralParameters.ParameterType.ListReportDataColumns]))
