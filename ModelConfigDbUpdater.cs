@@ -1986,7 +1986,7 @@ namespace DMSModelConfigDbUpdater
                     }
                     else
                     {
-                        aliasNameToUse = string.Empty;
+                        aliasNameToUse = aliasName;
                     }
 
                     var columnNameToUse = ColumnRenamed(viewType, generalParams.Parameters[viewType], columnNameToFind, out var newColumnName, snakeCaseNames)
