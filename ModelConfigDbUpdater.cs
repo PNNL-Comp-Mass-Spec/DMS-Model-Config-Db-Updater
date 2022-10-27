@@ -194,7 +194,7 @@ namespace DMSModelConfigDbUpdater
 
             if (!TryGetColumnMap(viewName, sourceViewDescription,out var columnMap))
             {
-                columnNameToUse = snakeCaseName
+                columnNameToUse = snakeCaseName && Options.SnakeCaseColumnNames
                     ? ConvertToSnakeCaseAndUpdatePrefix(currentColumnName)
                     : currentColumnName;
 
@@ -203,14 +203,14 @@ namespace DMSModelConfigDbUpdater
 
             if (!columnMap.TryGetValue(currentColumnName, out var columnInfo))
             {
-                columnNameToUse = snakeCaseName
+                columnNameToUse = snakeCaseName && Options.SnakeCaseColumnNames
                     ? ConvertToSnakeCaseAndUpdatePrefix(currentColumnName)
                     : currentColumnName;
 
                 return !currentColumnName.Equals(columnNameToUse);
             }
 
-            columnNameToUse = snakeCaseName
+            columnNameToUse = snakeCaseName && Options.SnakeCaseColumnNames
                 ? ConvertToSnakeCaseAndUpdatePrefix(columnInfo.NewColumnName)
                 : columnInfo.NewColumnName;
 
@@ -1598,9 +1598,16 @@ namespace DMSModelConfigDbUpdater
             if (viewFound || mMissingViews.Contains(viewName))
                 return viewFound;
 
-            OnWarningEvent(
-                "Cannot check for explicit column renames since view not found in mViewColumnNameMap: {0}\n" +
-                "Form fields will be auto-converted to lowercase snake case", viewName);
+            var message = string.Format("Cannot check for explicit column renames since view not found in mViewColumnNameMap: {0}", viewName);
+
+            if (Options.SnakeCaseColumnNames)
+            {
+                OnWarningEvent("{0}\n{1}", message, "Form fields will be auto-converted to lowercase snake case");
+            }
+            else
+            {
+                OnWarningEvent(message);
+            }
 
             Console.WriteLine();
 

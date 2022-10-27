@@ -12,7 +12,7 @@ namespace DMSModelConfigDbUpdater
         /// <summary>
         /// Program date
         /// </summary>
-        public const string PROGRAM_DATE = "July 13, 2022";
+        public const string PROGRAM_DATE = "October 26, 2022";
 
         [Option("InputDirectory", "Input", "I", ArgPosition = 1, HelpShowsDefault = false, IsInputFilePath = false,
             HelpText = "Directory with the DMS model config database files to update\n" +
@@ -73,6 +73,9 @@ namespace DMSModelConfigDbUpdater
             HelpText = "When true, snake case any view name that was not loaded from the View column map file")]
         public bool RenameUndefinedViews { get; set; } = true;
 
+        [Option("SnakeCaseColumnNames", "SnakeCaseColumns", HelpShowsDefault = true,
+            HelpText = "When true, snake case any column names that are not defined in the View column map file")]
+        public bool SnakeCaseColumnNames { get; set; } = true;
 
         [Option("QuoteWithSquareBrackets", "SquareBrackets", HelpShowsDefault = true,
             HelpText = "When true, quote names with square brackets (SQL Server compatible)")]
@@ -181,6 +184,7 @@ namespace DMSModelConfigDbUpdater
 
             Console.WriteLine(" {0,-40} {1}", "Rename Undefined Views:", RenameUndefinedViews);
 
+            Console.WriteLine(" {0,-40} {1}", "Snake Case Column Names:", SnakeCaseColumnNames);
 
             Console.WriteLine(" {0,-40} {1}", "Quote With Square Brackets:", QuoteWithSquareBrackets);
 
