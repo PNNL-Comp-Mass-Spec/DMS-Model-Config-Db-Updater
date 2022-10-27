@@ -12,18 +12,19 @@ namespace DMSModelConfigDbUpdater
         {
             DatabaseGroup = 0,
             DetailReportView = 1,
-            DetailReportDataIdColumn = 2,
-            EntryPageView = 3,
-            EntryPageDataIdColumn = 4,
-            EntryPageDataColumns = 5,
-            ListReportView = 6,
-            ListReportDataColumns = 7,
-            ListReportSortColumn = 8,
-            PostSubmissionDetailId = 9,
-            DetailReportSP = 10,
-            ListReportSP = 11,
-            EntryPageSP = 12,
-            OperationsSP = 13
+            DetailReportDataColumns = 2,
+            DetailReportDataIdColumn = 3,
+            EntryPageView = 4,
+            EntryPageDataIdColumn = 5,
+            EntryPageDataColumns = 6,
+            ListReportView = 7,
+            ListReportDataColumns = 8,
+            ListReportSortColumn = 9,
+            PostSubmissionDetailId = 10,
+            DetailReportSP = 11,
+            ListReportSP = 12,
+            EntryPageSP = 13,
+            OperationsSP = 14
         }
 
         /// <summary>
@@ -58,6 +59,7 @@ namespace DMSModelConfigDbUpdater
                 { ParameterType.DatabaseGroup, "database group" },
                 { ParameterType.DetailReportView, "detail report view" },
                 { ParameterType.DetailReportDataIdColumn, "detail report data ID column" },
+                { ParameterType.DetailReportDataColumns, "detail report data columns" },
                 { ParameterType.EntryPageView, "entry page view" },
                 { ParameterType.EntryPageDataIdColumn, "entry page data ID column" },
                 { ParameterType.EntryPageDataColumns, "entry page data columns" },
@@ -77,6 +79,7 @@ namespace DMSModelConfigDbUpdater
                 { ParameterType.DatabaseGroup, "my_db_group" },
                 { ParameterType.DetailReportView, "detail_report_data_table" },
                 { ParameterType.DetailReportDataIdColumn, "detail_report_data_id_col" },
+                { ParameterType.DetailReportDataColumns, "detail_report_data_cols" },
                 { ParameterType.EntryPageView, "entry_page_data_table" },
                 { ParameterType.EntryPageDataIdColumn, "entry_page_data_id_col" },
                 { ParameterType.EntryPageDataColumns, "entry_page_data_cols" },

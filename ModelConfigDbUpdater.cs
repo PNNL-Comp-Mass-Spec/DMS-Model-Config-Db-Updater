@@ -1392,6 +1392,11 @@ namespace DMSModelConfigDbUpdater
                     UpdateGeneralParameter(generalParams, GeneralParameters.ParameterType.DetailReportDataIdColumn, columnNameToUse);
                 }
 
+                if (!string.IsNullOrWhiteSpace(generalParams.Parameters[GeneralParameters.ParameterType.DetailReportDataColumns]))
+                {
+                    UpdateDetailReportDataColumns(generalParams);
+                }
+
                 return viewNameToUse;
             }
             catch (Exception ex)
@@ -1632,6 +1637,11 @@ namespace DMSModelConfigDbUpdater
             mMissingViews.Add(viewName);
 
             return false;
+        }
+
+        private void UpdateDetailReportDataColumns(GeneralParameters generalParams)
+        {
+            UpdateListOfDataColumns(generalParams, GeneralParameters.ParameterType.DetailReportDataColumns, GeneralParameters.ParameterType.DetailReportView, false);
         }
 
         /// <summary>
