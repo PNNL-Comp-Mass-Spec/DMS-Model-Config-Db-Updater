@@ -1607,14 +1607,16 @@ namespace DMSModelConfigDbUpdater
         /// <param name="objectName"></param>
         private static string TrimQuotes(string objectName)
         {
-            if (objectName.StartsWith("[") && objectName.EndsWith("]"))
+            var trimmedName = objectName.Trim();
+
+            if (trimmedName.StartsWith("[") && trimmedName.EndsWith("]"))
             {
-                return objectName.Substring(1, objectName.Length - 2);
+                return trimmedName.Substring(1, trimmedName.Length - 2);
             }
 
-            if (objectName.StartsWith("\"") && objectName.EndsWith("\""))
+            if (trimmedName.StartsWith("\"") && trimmedName.EndsWith("\""))
             {
-                return objectName.Substring(1, objectName.Length - 2);
+                return trimmedName.Substring(1, trimmedName.Length - 2);
             }
 
             return objectName;
