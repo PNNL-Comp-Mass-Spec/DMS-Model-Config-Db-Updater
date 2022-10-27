@@ -17,8 +17,9 @@ DMSModelConfigDbUpdater.exe
   /O:OutputDirectory
   /Map:ViewColumnMapFile
   [/TableNameMap:TableNameMapFile]
-  [/Preview]
+  [/Preview] [/Q]
   [/RenameList] [/RenameDetail] [/RenameEntry] [/RenameSPs]
+  [/RenameViews] [/SnakeCaseColumns] [/SquareBrackets]
   [/UsePgSchema]
   [/Validate] [/Server]
   [/WriteResults] [/ResultsFile:ValidationResults.txt]
@@ -35,7 +36,7 @@ Optionally use `/O` to specify the output directory for writing updated SQLite f
 * If the directory is not rooted (e.g. starts with C:), this is treated as a path relative to the input files 
 * If the output directory is not defined, SQLite files will be updated in-place
 
-The `/Map` file is is a tab-delimited text file with three columns
+Use `/Map` to define the View column map file, which is is a tab-delimited text file with three columns
 * The Map file matches the format of the renamed column file created by the PgSql View Creator Helper (PgSqlViewCreatorHelper.exe)
 * Example data:
 
@@ -75,6 +76,8 @@ Use `/TableNameMap` (or `/TableNames`) to optionally specify a tab-delimited tex
 
 Use `/Preview` to show changes that would be made, but do not update any files
 
+Use `/Q` to enable quiet mode, which shows fewer messages
+
 Use `/RenameList` to rename the list report view and columns
 
 Use `/RenameDetail` to rename the detail report view and columns
@@ -85,14 +88,18 @@ Use `/RenameEntry` to rename the entry page view and columns
 Use `/RenameSPs` to rename the referenced stored procedures to use snake case
 * This does not change argument names
 
-When `/UsePgSchema` is provided, if the object name does not already have a schema and the db_group for the page family is defined,
+Use `/RenameViews:False` to disable changing unrecognized view names to snake case
+* View names will be unrecognized if not defined in the View column map file
+
+Use `/SnakeCaseColumns:false` to disable changing unrecognized column names to snake case
+* Column names will be unrecognized if not defined in the View column map file
+
+Use `/SquareBrackets` to enable quoting names using square brackets (SQL Server compatible)
+* By default, will quote names using double quotes (if the name contains a space, punctuation, or other non-alphanumeric characters)
+
+When `/UsePgSchema` is provided, if the object name does not already have a schema and the database group for the page family is defined (using `my_db_group`),
 preface object names with the PostgreSQL schema that applies to the database group
 * This should only be set to true if the DMS website is now retrieving data from PostgreSQL and schema names need to be added to page families
-
-The processing options can be specified in a parameter file using `/ParamFile:Options.conf` or `/Conf:Options.conf`
-* Define options using the format `ArgumentName=Value`
-* Lines starting with `#` or `;` will be treated as comments
-* Additional arguments on the command line can supplement or override the arguments in the parameter file
 
 Use `/Validate` to read column names used in each SQLite file and validate against the column names in the source tables or views for list reports, detail reports, and entry pages
 * When this is true, the name map files are not loaded and no object renaming is performed
@@ -102,6 +109,11 @@ Use `/Server:ServerName` to define the server name to contact to validate form f
 
 Use `/WriteResults` to save the validation results to a text file
 * Use `/ResultsFile:ValidationResults.txt` to customize the filename
+
+The processing options can be specified in a parameter file using `/ParamFile:Options.conf` or `/Conf:Options.conf`
+* Define options using the format `ArgumentName=Value`
+* Lines starting with `#` or `;` will be treated as comments
+* Additional arguments on the command line can supplement or override the arguments in the parameter file
 
 Use `/CreateParamFile` to create an example parameter file
 * By default, the example parameter file content is shown at the console
