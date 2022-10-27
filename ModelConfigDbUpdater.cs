@@ -689,6 +689,18 @@ namespace DMSModelConfigDbUpdater
                 return objectName;
             }
 
+            if (objectName.Trim().Equals("*"))
+            {
+                // Asterisk; leave as-is
+                return objectName;
+            }
+
+            if (objectName.StartsWith("\"") && objectName.EndsWith("\""))
+            {
+                // Name already surrounded with double quotes; leave as-is
+                return objectName;
+            }
+
             if (!alwaysQuoteNames &&
                 !mColumnCharNonStandardMatcher.Match(objectName).Success)
             {
