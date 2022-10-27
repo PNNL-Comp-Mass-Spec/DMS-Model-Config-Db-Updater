@@ -1610,6 +1610,15 @@ namespace DMSModelConfigDbUpdater
 
         private bool TryGetColumnMap(string viewName, string sourceViewDescription, out Dictionary<string, ColumnNameInfo> columnMap)
         {
+            if (string.IsNullOrWhiteSpace(viewName))
+            {
+                OnStatusEvent("Cannot check for explicit column renames since {0} view not defined", sourceViewDescription);
+                Console.WriteLine();
+
+                columnMap = new Dictionary<string, ColumnNameInfo>();
+                return false;
+            }
+
             if (mViewNameMap.TryGetValue(viewName, out var nameWithSchema))
             {
                 columnMap = mViewColumnNameMap[nameWithSchema];
