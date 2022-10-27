@@ -69,6 +69,10 @@ namespace DMSModelConfigDbUpdater
             HelpText = "When true, rename the referenced stored procedures to use snake case (does not change argument names)")]
         public bool RenameStoredProcedures { get; set; }
 
+        [Option("RenameUndefinedViews", "RenameViews", HelpShowsDefault = true,
+            HelpText = "When true, snake case any view name that was not loaded from the View column map file")]
+        public bool RenameUndefinedViews { get; set; } = true;
+
 
         [Option("QuoteWithSquareBrackets", "SquareBrackets", HelpShowsDefault = true,
             HelpText = "When true, quote names with square brackets (SQL Server compatible)")]
@@ -174,6 +178,8 @@ namespace DMSModelConfigDbUpdater
             Console.WriteLine(" {0,-40} {1}", "Rename Entry Page View and Columns:", RenameEntryPageViewAndColumns);
 
             Console.WriteLine(" {0,-40} {1}", "Rename Stored Procedures:", RenameStoredProcedures);
+
+            Console.WriteLine(" {0,-40} {1}", "Rename Undefined Views:", RenameUndefinedViews);
 
 
             Console.WriteLine(" {0,-40} {1}", "Quote With Square Brackets:", QuoteWithSquareBrackets);

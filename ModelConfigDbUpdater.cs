@@ -1471,8 +1471,15 @@ namespace DMSModelConfigDbUpdater
             }
             else
             {
-                // Snake case the name since Perl script sqlserver2pgsql.pl renames all views to snake case
-                updatedName = ConvertToSnakeCaseAndUpdatePrefix(currentName);
+                if (Options.RenameUndefinedViews)
+                {
+                    // Snake case the name since Perl script sqlserver2pgsql.pl renames all views to snake case
+                    updatedName = ConvertToSnakeCaseAndUpdatePrefix(currentName);
+                }
+                else
+                {
+                    updatedName = currentName;
+                }
             }
 
             var nameToUse = PossiblyAddSchema(generalParams, updatedName);
