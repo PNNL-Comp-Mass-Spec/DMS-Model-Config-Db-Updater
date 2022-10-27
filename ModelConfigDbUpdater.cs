@@ -1953,11 +1953,11 @@ namespace DMSModelConfigDbUpdater
 
                     if (string.IsNullOrWhiteSpace(aliasNameToUse))
                     {
-                        updatedColumns.Add(PossiblyQuoteName(columnNameToUse));
+                        updatedColumns.Add(PossiblyQuoteName(columnNameToUse, Options.QuoteWithSquareBrackets));
                     }
                     else
                     {
-                        var nameWithAlias = PossiblyQuoteName(columnNameToUse) + " AS " + aliasNameToUse;
+                        var nameWithAlias = PossiblyQuoteName(columnNameToUse, Options.QuoteWithSquareBrackets) + " AS " + aliasNameToUse;
                         updatedColumns.Add(nameWithAlias);
                     }
                 }

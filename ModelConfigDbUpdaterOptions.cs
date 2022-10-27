@@ -69,6 +69,11 @@ namespace DMSModelConfigDbUpdater
             HelpText = "When true, rename the referenced stored procedures to use snake case (does not change argument names)")]
         public bool RenameStoredProcedures { get; set; }
 
+
+        [Option("QuoteWithSquareBrackets", "SquareBrackets", HelpShowsDefault = true,
+            HelpText = "When true, quote names with square brackets (SQL Server compatible)")]
+        public bool QuoteWithSquareBrackets { get; set; }
+
         [Option("UsePostgresSchema", "UsePgSchema", HelpShowsDefault = true,
             HelpText = "When true, if the object name does not already have a schema and the db_group for the page family is defined, " +
                        "preface object names with the Postgres schema that applies to the database group\n" +
@@ -169,6 +174,9 @@ namespace DMSModelConfigDbUpdater
             Console.WriteLine(" {0,-40} {1}", "Rename Entry Page View and Columns:", RenameEntryPageViewAndColumns);
 
             Console.WriteLine(" {0,-40} {1}", "Rename Stored Procedures:", RenameStoredProcedures);
+
+
+            Console.WriteLine(" {0,-40} {1}", "Quote With Square Brackets:", QuoteWithSquareBrackets);
 
             Console.WriteLine(" {0,-40} {1}", "Validate Column Names with DB:", ValidateColumnNamesWithDatabase);
         }
