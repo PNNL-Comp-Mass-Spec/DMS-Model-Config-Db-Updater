@@ -78,7 +78,7 @@ namespace DMSModelConfigDbUpdater
         public bool SnakeCaseColumnNames { get; set; } = true;
 
         [Option("QuoteWithSquareBrackets", "SquareBrackets", HelpShowsDefault = true,
-            HelpText = "When true, quote names with square brackets (SQL Server compatible)")]
+            HelpText = "When false, quote names with double quotes (PostgreSQL compatible)\nWhen true, quote names with square brackets (SQL Server compatible)")]
         public bool QuoteWithSquareBrackets { get; set; }
 
         [Option("UsePostgresSchema", "UsePgSchema", HelpShowsDefault = true,
@@ -90,7 +90,7 @@ namespace DMSModelConfigDbUpdater
         [Option("ValidateColumnNames", "ValidateColumns", "Validate", HelpShowsDefault = true,
             HelpText = "When true, read column names used in each SQLite file and validate against the column names " +
                        "in the source tables or views for list reports, detail reports, and entry pages\n" +
-                       "When this is true, the name map files are not loaded and no object renaming is performed")]
+                       "When this is true, the name map files are not loaded, and no object renaming is performed")]
         public bool ValidateColumnNamesWithDatabase { get; set; }
 
         [Option("DatabaseServer", "Server", HelpShowsDefault = true,
