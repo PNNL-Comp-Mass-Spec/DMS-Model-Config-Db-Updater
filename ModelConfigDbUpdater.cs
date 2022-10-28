@@ -192,6 +192,13 @@ namespace DMSModelConfigDbUpdater
                 return false;
             }
 
+            if (float.TryParse(currentColumnName, out _))
+            {
+                // Number; leave as-is
+                columnNameToUse = currentColumnName;
+                return false;
+            }
+
             if (!TryGetColumnMap(viewName, sourceViewDescription, out var columnMap))
             {
                 // View name not defined in the View column map file
