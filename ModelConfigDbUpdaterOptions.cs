@@ -69,7 +69,7 @@ namespace DMSModelConfigDbUpdater
             HelpText = "When true, rename the referenced stored procedures to use snake case (does not change argument names)")]
         public bool RenameStoredProcedures { get; set; }
 
-        [Option("RenameUndefinedViews", "RenameViews", HelpShowsDefault = true,
+        [Option("RenameUndefinedViews", "RenameUnknownViews", HelpShowsDefault = true,
             HelpText = "When true, snake case any view name that was not loaded from the View column map file")]
         public bool RenameUndefinedViews { get; set; } = true;
 
