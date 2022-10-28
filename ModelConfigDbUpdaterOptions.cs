@@ -73,6 +73,10 @@ namespace DMSModelConfigDbUpdater
             HelpText = "When true, snake case any view name that was not loaded from the View column map file")]
         public bool RenameUndefinedViews { get; set; } = true;
 
+        [Option("ReplaceSpacesWithUnderscores", "ReplaceSpaces", HelpShowsDefault = true,
+            HelpText = "When true, replace spaces in column names with underscores")]
+        public bool ReplaceSpacesWithUnderscores { get; set; }
+
         [Option("SnakeCaseColumnNames", "SnakeCaseColumns", HelpShowsDefault = true,
             HelpText = "When true, snake case any column names that are not defined in the View column map file")]
         public bool SnakeCaseColumnNames { get; set; } = true;
@@ -183,6 +187,8 @@ namespace DMSModelConfigDbUpdater
             Console.WriteLine(" {0,-40} {1}", "Rename Stored Procedures:", RenameStoredProcedures);
 
             Console.WriteLine(" {0,-40} {1}", "Rename Undefined Views:", RenameUndefinedViews);
+
+            Console.WriteLine(" {0,-40} {1}", "Replace spaces with underscores:", ReplaceSpacesWithUnderscores);
 
             Console.WriteLine(" {0,-40} {1}", "Snake Case Column Names:", SnakeCaseColumnNames);
 

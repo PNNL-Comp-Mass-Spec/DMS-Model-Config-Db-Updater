@@ -18,8 +18,9 @@ DMSModelConfigDbUpdater.exe
   /Map:ViewColumnMapFile
   [/TableNameMap:TableNameMapFile]
   [/Preview] [/Q]
-  [/RenameList] [/RenameDetail] [/RenameEntry] [/RenameSPs]
-  [/RenameViews] [/SnakeCaseColumns] [/SquareBrackets]
+  [/RenameList] [/RenameDetail] [/RenameEntry] 
+  [/RenameSPs] [/RenameUnknownViews]
+  [/ReplaceSpaces] [/SnakeCaseColumns] [/SquareBrackets]
   [/UsePgSchema]
   [/Validate] [/Server]
   [/WriteResults] [/ResultsFile:ValidationResults.txt]
@@ -88,8 +89,11 @@ Use `/RenameEntry` to rename the entry page view and columns
 Use `/RenameSPs` to rename the referenced stored procedures to use snake case
 * This does not change argument names
 
-Use `/RenameViews:False` to disable changing unrecognized view names to snake case
+Use `/RenameUnknownViews:False` to disable changing unrecognized view names to snake case
 * View names will be unrecognized if not defined in the View column map file
+
+Use `/ReplaceSpaces:True` to enable replacing spaces in column names with underscores
+* This only applies to column names not defined in the View column map file
 
 Use `/SnakeCaseColumns:false` to disable changing unrecognized column names to snake case
 * Column names will be unrecognized if not defined in the View column map file

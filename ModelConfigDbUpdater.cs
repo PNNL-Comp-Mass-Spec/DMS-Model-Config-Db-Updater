@@ -192,20 +192,18 @@ namespace DMSModelConfigDbUpdater
                 return false;
             }
 
-            if (!TryGetColumnMap(viewName, sourceViewDescription,out var columnMap))
+            if (!TryGetColumnMap(viewName, sourceViewDescription, out var columnMap))
             {
-                columnNameToUse = snakeCaseName && Options.SnakeCaseColumnNames
-                    ? ConvertToSnakeCaseAndUpdatePrefix(currentColumnName)
-                    : currentColumnName;
+                // View name not defined in the View column map file
+                columnNameToUse = UpdateColumnName(currentColumnName, snakeCaseName);
 
                 return !currentColumnName.Equals(columnNameToUse);
             }
 
             if (!columnMap.TryGetValue(currentColumnName, out var columnInfo))
             {
-                columnNameToUse = snakeCaseName && Options.SnakeCaseColumnNames
-                    ? ConvertToSnakeCaseAndUpdatePrefix(currentColumnName)
-                    : currentColumnName;
+                // Column not defined in the View column map file
+                columnNameToUse = UpdateColumnName(currentColumnName, snakeCaseName);
 
                 return !currentColumnName.Equals(columnNameToUse);
             }
@@ -1648,11 +1646,16 @@ namespace DMSModelConfigDbUpdater
 
             if (Options.SnakeCaseColumnNames)
             {
-                OnWarningEvent("{0}\n{1}", message, "Form fields will be auto-converted to lowercase snake case");
+                OnWarningEvent("{0}\n{1}{2}",
+                    message,
+                    "Column names will be converted to lowercase snake case",
+                    Options.ReplaceSpacesWithUnderscores ? " after replacing spaces with underscores" : string.Empty);
             }
             else
             {
-                OnWarningEvent(message);
+                OnWarningEvent("{0}{1}",
+                    message,
+                    Options.ReplaceSpacesWithUnderscores ? "\nSpaces in column names will be replaced with underscores" : string.Empty);
             }
 
             Console.WriteLine();
@@ -1660,6 +1663,18 @@ namespace DMSModelConfigDbUpdater
             mMissingViews.Add(viewName);
 
             return false;
+        }
+
+        private string UpdateColumnName(string currentColumnName, bool snakeCaseName)
+        {
+            var columnNameToUse = Options.ReplaceSpacesWithUnderscores
+                ? currentColumnName.Replace(' ', '_')
+                : currentColumnName;
+
+            if (!snakeCaseName || !Options.SnakeCaseColumnNames)
+                return columnNameToUse;
+
+            return ConvertToSnakeCaseAndUpdatePrefix(currentColumnName);
         }
 
         private void UpdateDetailReportDataColumns(GeneralParameters generalParams)
