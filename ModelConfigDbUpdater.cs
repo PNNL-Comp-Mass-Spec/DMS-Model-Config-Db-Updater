@@ -507,7 +507,29 @@ namespace DMSModelConfigDbUpdater
                 // Look for known renamed views and add new entries to viewColumnNameMap for any matches
                 if (mViewColumnNameMap.TryGetValue(item.TargetTableName, out var renamedColumns))
                 {
-                    mViewColumnNameMap.Add(item.SourceTableName, renamedColumns);
+                    if (mViewColumnNameMap.TryGetValue(item.SourceTableName, out var existingRenamedColumnInfo))
+                    {
+                        // Merge the renamed column list
+                        foreach (var renamedColumn in renamedColumns)
+                        {
+                            if (existingRenamedColumnInfo.TryGetValue(renamedColumn.Key, out var existingInfo))
+                            {
+                                if (!existingInfo.NewColumnName.Equals(renamedColumn.Value.NewColumnName))
+                                {
+                                    OnWarningEvent("Multiple synonyms are defined for column {0} in the input files: {1} vs. {2}",
+                                        existingInfo.SourceColumnName, existingInfo.NewColumnName, renamedColumn.Value.NewColumnName);
+                                }
+                            }
+                            else
+                            {
+                                existingRenamedColumnInfo.Add(renamedColumn.Key, renamedColumn.Value);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        mViewColumnNameMap.Add(item.SourceTableName, renamedColumns);
+                    }
                 }
             }
 
