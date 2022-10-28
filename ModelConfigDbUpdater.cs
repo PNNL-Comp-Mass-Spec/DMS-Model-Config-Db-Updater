@@ -2074,7 +2074,10 @@ namespace DMSModelConfigDbUpdater
                     }
                     else
                     {
-                        var nameWithAlias = PossiblyQuoteName(columnNameToUse, Options.QuoteWithSquareBrackets) + " AS " + aliasNameToUse;
+                        var nameWithAlias = string.Format("{0} AS {1}",
+                            PossiblyQuoteName(columnNameToUse, Options.QuoteWithSquareBrackets),
+                            PossiblyQuoteName(aliasNameToUse, Options.QuoteWithSquareBrackets));
+
                         updatedColumns.Add(nameWithAlias);
                     }
                 }
