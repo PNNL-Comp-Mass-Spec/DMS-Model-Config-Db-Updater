@@ -12,7 +12,7 @@ namespace DMSModelConfigDbUpdater
         /// <summary>
         /// Program date
         /// </summary>
-        public const string PROGRAM_DATE = "October 26, 2022";
+        public const string PROGRAM_DATE = "October 28, 2022";
 
         [Option("InputDirectory", "Input", "I", ArgPosition = 1, HelpShowsDefault = false, IsInputFilePath = false,
             HelpText = "Directory with the DMS model config database files to update\n" +
@@ -53,7 +53,7 @@ namespace DMSModelConfigDbUpdater
         [Option("RenameListReportView", "RenameList", HelpShowsDefault = true,
             HelpText = "When true, rename the list report view and columns\n" +
                        "View renames will either be based on data loaded from the table name map file, or by converting to snake case\n" +
-                       "Column renames are based on data loaded from the view column map file")]
+                       "Column renames are based on data loaded from the view column map file, optionally replacing spaces with underscores if the name is not defined in the map file")]
         public bool RenameListReportViewAndColumns { get; set; }
 
         [Option("RenameDetailReportView", "RenameDetail", HelpShowsDefault = true,
