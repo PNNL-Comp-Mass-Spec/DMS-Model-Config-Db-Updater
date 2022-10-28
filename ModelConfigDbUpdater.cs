@@ -2046,10 +2046,18 @@ namespace DMSModelConfigDbUpdater
 
                     if (viewType == GeneralParameters.ParameterType.EntryPageView)
                     {
-                        // See if the column alias needs to be updated
-                        aliasNameToUse = ColumnRenamed("Entry Page", generalParams.Parameters[viewType], aliasName, out var newAliasName, snakeCaseNames)
-                            ? newAliasName
-                            : aliasName;
+                        if (string.IsNullOrWhiteSpace(aliasName))
+                        {
+                            aliasNameToUse = string.Empty;
+                        }
+                        else
+                        {
+                            // This column is likely a string literal, with an alias
+                            // See if the column alias needs to be updated
+                            aliasNameToUse = ColumnRenamed("Entry Page", generalParams.Parameters[viewType], aliasName, out var newAliasName, snakeCaseNames)
+                                ? newAliasName
+                                : aliasName;
+                        }
                     }
                     else
                     {
