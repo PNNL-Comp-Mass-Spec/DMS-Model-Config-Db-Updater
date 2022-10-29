@@ -85,10 +85,12 @@ namespace DMSModelConfigDbUpdater
             HelpText = "When false, quote names with double quotes (PostgreSQL compatible)\nWhen true, quote names with square brackets (SQL Server compatible)")]
         public bool QuoteWithSquareBrackets { get; set; }
 
+
         [Option("UsePostgresSchema", "UsePgSchema", HelpShowsDefault = true,
             HelpText = "When true, if the object name does not already have a schema and the db_group for the page family is defined, " +
                        "preface object names with the Postgres schema that applies to the database group\n" +
-                       "This should only be set to true if the DMS website is now retrieving data from Postgres and schema names need to be added to page families")]
+                       "This should only be set to true if the DMS website is now retrieving data from Postgres and schema names need to be added to page families\n" +
+                       "This should also be set to true when ValidateColumnNames is true and using a PostgreSQL database server")]
         public bool UsePostgresSchema { get; set; }
 
         [Option("ValidateColumnNames", "ValidateColumns", "Validate", HelpShowsDefault = true,
@@ -141,48 +143,48 @@ namespace DMSModelConfigDbUpdater
         {
             Console.WriteLine("Options:");
 
-            Console.WriteLine(" {0,-30} {1}", "Input Directory:", PathUtils.CompactPathString(InputDirectory, 80));
+            Console.WriteLine(" {0,-32} {1}", "Input Directory:", PathUtils.CompactPathString(InputDirectory, 80));
 
             if (!string.IsNullOrWhiteSpace(FilenameFilter))
             {
-                Console.WriteLine(" {0,-30} {1}", "Filename Filter:", FilenameFilter);
+                Console.WriteLine(" {0,-32} {1}", "Filename Filter:", FilenameFilter);
             }
 
-            Console.WriteLine(" {0,-30} {1}", "Output Directory:",
+            Console.WriteLine(" {0,-32} {1}", "Output Directory:",
                 string.IsNullOrWhiteSpace(OutputDirectory)
                     ? "n/a: updating files in-place"
                     : PathUtils.CompactPathString(OutputDirectory, 80));
 
             if (ValidateColumnNamesWithDatabase)
             {
-                Console.WriteLine(" {0,-30} {1}", "Validate Column Names with DB:", ValidateColumnNamesWithDatabase);
+                Console.WriteLine(" {0,-32} {1}", "Validate Column Names With DB:", ValidateColumnNamesWithDatabase);
 
                 Console.WriteLine(" {0,-32} {1}", "Database Server:", DatabaseServer);
 
                 Console.WriteLine(" {0,-32} {1}", "Continue Validating If Errors:", ValidateColumnNamesIgnoreErrors);
 
-                Console.WriteLine(" {0,-30} {1}", "Save Validation Results:", SaveValidateResultsToFile);
+                Console.WriteLine(" {0,-32} {1}", "Save Validation Results:", SaveValidateResultsToFile);
 
                 if (SaveValidateResultsToFile)
                 {
                     var resultsFile = new FileInfo(ModelConfigDbUpdater.GetValidateResultsFilePath(InputDirectory, ValidateResultsFileName));
 
-                    Console.WriteLine(" {0,-30} {1}", "Validation Results File:", PathUtils.CompactPathString(resultsFile.FullName, 80));
+                    Console.WriteLine(" {0,-32} {1}", "Validation Results File:", PathUtils.CompactPathString(resultsFile.FullName, 80));
                 }
 
                 return;
             }
 
-            Console.WriteLine(" {0,-30} {1}", "View Column Map File:", PathUtils.CompactPathString(ViewColumnMapFile, 80));
+            Console.WriteLine(" {0,-32} {1}", "View Column Map File:", PathUtils.CompactPathString(ViewColumnMapFile, 80));
 
             if (!string.IsNullOrWhiteSpace(TableNameMapFile))
             {
-                Console.WriteLine(" {0,-30} {1}", "Table Name Map File:", PathUtils.CompactPathString(TableNameMapFile, 80));
+                Console.WriteLine(" {0,-32} {1}", "Table Name Map File:", PathUtils.CompactPathString(TableNameMapFile, 80));
             }
 
-            Console.WriteLine(" {0,-30} {1}", "Preview Updates:", PreviewUpdates);
+            Console.WriteLine(" {0,-32} {1}", "Preview Updates:", PreviewUpdates);
 
-            Console.WriteLine(" {0,-30} {1}", "Quiet Mode:", QuietMode);
+            Console.WriteLine(" {0,-32} {1}", "Quiet Mode:", QuietMode);
 
             Console.WriteLine(" {0,-40} {1}", "Rename List Report View and Columns:", RenameListReportViewAndColumns);
 
@@ -194,7 +196,7 @@ namespace DMSModelConfigDbUpdater
 
             Console.WriteLine(" {0,-40} {1}", "Rename Undefined Views:", RenameUndefinedViews);
 
-            Console.WriteLine(" {0,-40} {1}", "Replace spaces with underscores:", ReplaceSpacesWithUnderscores);
+            Console.WriteLine(" {0,-40} {1}", "Replace Spaces With Underscores:", ReplaceSpacesWithUnderscores);
 
             Console.WriteLine(" {0,-40} {1}", "Snake Case Column Names:", SnakeCaseColumnNames);
 
