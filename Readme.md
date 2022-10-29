@@ -22,7 +22,7 @@ DMSModelConfigDbUpdater.exe
   [/RenameSPs] [/RenameUnknownViews]
   [/ReplaceSpaces] [/SnakeCaseColumns] [/SquareBrackets]
   [/UsePgSchema]
-  [/Validate] [/Server]
+  [/Validate] [/Server] [/ValidateIgnoreErrors]
   [/WriteResults] [/ResultsFile:ValidationResults.txt]
   [/ParamFile:ParamFileName.conf] [/CreateParamFile]
 ```
@@ -89,10 +89,10 @@ Use `/RenameEntry` to rename the entry page view and columns
 Use `/RenameSPs` to rename the referenced stored procedures to use snake case
 * This does not change argument names
 
-Use `/RenameUnknownViews:False` to disable changing unrecognized view names to snake case
+Use `/RenameUnknownViews:false` to disable changing unrecognized view names to snake case
 * View names will be unrecognized if not defined in the View column map file
 
-Use `/ReplaceSpaces:True` to enable replacing spaces in column names with underscores
+Use `/ReplaceSpaces` to enable replacing spaces in column names with underscores
 * This only applies to column names not defined in the View column map file
 
 Use `/SnakeCaseColumns:false` to disable changing unrecognized column names to snake case
@@ -110,6 +110,9 @@ Use `/Validate` to read column names used in each SQLite file and validate again
 
 Use `/Server:ServerName` to define the server name to contact to validate form field names against columns in tables or views
 * Assumed to be SQL Server if `/UsePostgresSchema` is false; otherwise, assumes PostgreSQL
+
+When validating column names against the database, if errors are found, by default the program will notify the user of errors, then exit
+* Use `/ValidateIgnoreErrors` to show any errors found, then continue with the next model config DB file
 
 Use `/WriteResults` to save the validation results to a text file
 * Use `/ResultsFile:ValidationResults.txt` to customize the filename

@@ -846,7 +846,7 @@ namespace DMSModelConfigDbUpdater
                 {
                     var success = ProcessFile(modelConfigDb);
 
-                    if (!success)
+                    if (!success && Options.ValidateColumnNamesIgnoreErrors)
                         return false;
 
                     filesProcessed++;

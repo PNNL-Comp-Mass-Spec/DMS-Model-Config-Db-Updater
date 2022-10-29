@@ -102,6 +102,10 @@ namespace DMSModelConfigDbUpdater
                        "Assumed to be SQL Server if UsePostgresSchema is false; otherwise, assumes PostgreSQL")]
         public string DatabaseServer { get; set; } = "Gigasax";
 
+        [Option("ValidateColumnNamesIgnoreErrors", "ValidateIgnoreErrors", HelpShowsDefault = true,
+            HelpText = "When true, ignore errors while validating model config DBs (errors will be reported, but all config DBs will be validated)")]
+        public bool ValidateColumnNamesIgnoreErrors { get; set; }
+
         [Option("SaveValidationResults", "SaveValidation", "WriteResults", HelpShowsDefault = true,
             HelpText = "When true, save the validation results to a text file")]
         public bool SaveValidateResultsToFile { get; set; }
@@ -153,7 +157,9 @@ namespace DMSModelConfigDbUpdater
             {
                 Console.WriteLine(" {0,-30} {1}", "Validate Column Names with DB:", ValidateColumnNamesWithDatabase);
 
-                Console.WriteLine(" {0,-30} {1}", "Database server:", DatabaseServer);
+                Console.WriteLine(" {0,-32} {1}", "Database Server:", DatabaseServer);
+
+                Console.WriteLine(" {0,-32} {1}", "Continue Validating If Errors:", ValidateColumnNamesIgnoreErrors);
 
                 Console.WriteLine(" {0,-30} {1}", "Save Validation Results:", SaveValidateResultsToFile);
 
