@@ -20,6 +20,11 @@ namespace DMSModelConfigDbUpdater
         private readonly Regex mAdHocQueryMatcher = new("ad_hoc_query/(?<QueryName>[^/]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         /// <summary>
+        /// Match any character that is not a letter, number, or underscore
+        /// </summary>
+        private readonly Regex mColumnCharNonStandardMatcher = new("[^a-z0-9_]", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+        /// <summary>
         /// Keys in this dictionary are database names
         /// Values are an instance of DatabaseColumnInfo
         /// </summary>
@@ -175,18 +180,19 @@ namespace DMSModelConfigDbUpdater
 
                 if (tableOrViewName.Contains("."))
                 {
-                    schemaNameToFind = ModelConfigDbUpdater.GetSchemaName(tableOrViewName);
-                    nameWithoutSchema = ModelConfigDbUpdater.GetNameWithoutSchema(tableOrViewName);
+                    schemaNameToFind = PossiblyUnquote(ModelConfigDbUpdater.GetSchemaName(tableOrViewName));
+                    nameWithoutSchema = PossiblyUnquote(ModelConfigDbUpdater.GetNameWithoutSchema(tableOrViewName));
                 }
                 else
                 {
-                    nameWithoutSchema = tableOrViewName;
                     schemaNameToFind = mOptions.UsePostgresSchema ? "public" : "dbo";
+                    nameWithoutSchema = PossiblyUnquote(tableOrViewName);
                 }
 
                 var databaseColumnInfo = mDatabaseColumns[targetDatabase];
 
                 columnNames = databaseColumnInfo.GetColumnsForTableOrView(schemaNameToFind, nameWithoutSchema);
+
                 return columnNames.Count > 0;
             }
             catch (Exception ex)
@@ -258,6 +264,17 @@ namespace DMSModelConfigDbUpdater
         {
             return mGeneralParams.Parameters.TryGetValue(GeneralParameters.ParameterType.OperationsSP, out var operationsProcedure) &&
                    operationsProcedure.Equals(procedureName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// If objectName only has letters, numbers, or underscores, remove any double quotes surrounding the name
+        /// </summary>
+        /// <param name="objectName"></param>
+        private string PossiblyUnquote(string objectName)
+        {
+            var cleanName = objectName.Trim().Trim('"');
+
+            return mColumnCharNonStandardMatcher.IsMatch(cleanName) ? objectName : cleanName;
         }
 
         /// <summary>
