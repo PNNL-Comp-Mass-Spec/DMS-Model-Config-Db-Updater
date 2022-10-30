@@ -7,12 +7,12 @@ namespace DMSModelConfigDbUpdater
 {
     public class ModelConfigDbUpdaterOptions
     {
-        // Ignore Spelling: dataset, Postgres, pre
+        // Ignore Spelling: dataset, hotlink, Postgres, pre
 
         /// <summary>
         /// Program date
         /// </summary>
-        public const string PROGRAM_DATE = "October 28, 2022";
+        public const string PROGRAM_DATE = "October 29, 2022";
 
         [Option("InputDirectory", "Input", "I", ArgPosition = 1, HelpShowsDefault = false, IsInputFilePath = false,
             HelpText = "Directory with the DMS model config database files to update\n" +
@@ -85,6 +85,10 @@ namespace DMSModelConfigDbUpdater
             HelpText = "When false, quote names with double quotes (PostgreSQL compatible)\nWhen true, quote names with square brackets (SQL Server compatible)")]
         public bool QuoteWithSquareBrackets { get; set; }
 
+        [Option("ConvertHiddenColumnsToNoDisplay", "ConvertHiddenColumns", HelpShowsDefault = true,
+            HelpText = "When true, look for columns that start with # and convert them to list report hotlink type no_display\n" +
+                       "In addition, remove the # sign from the name")]
+        public bool ConvertHiddenColumnsToNoDisplay { get; set; }
 
         [Option("UsePostgresSchema", "UsePgSchema", HelpShowsDefault = true,
             HelpText = "When true, if the object name does not already have a schema and the db_group for the page family is defined, " +
@@ -202,7 +206,9 @@ namespace DMSModelConfigDbUpdater
 
             Console.WriteLine(" {0,-40} {1}", "Quote With Square Brackets:", QuoteWithSquareBrackets);
 
-            Console.WriteLine(" {0,-40} {1}", "Validate Column Names with DB:", ValidateColumnNamesWithDatabase);
+            Console.WriteLine(" {0,-40} {1}", "Convert Hidden Columns To no_display:", ConvertHiddenColumnsToNoDisplay);
+
+            Console.WriteLine(" {0,-40} {1}", "Validate Column Names With DB:", ValidateColumnNamesWithDatabase);
         }
 
         /// <summary>
@@ -217,7 +223,7 @@ namespace DMSModelConfigDbUpdater
                 return false;
             }
 
-            if (!ValidateColumnNamesWithDatabase && string.IsNullOrWhiteSpace(ViewColumnMapFile))
+            if (!ValidateColumnNamesWithDatabase && !ConvertHiddenColumnsToNoDisplay && string.IsNullOrWhiteSpace(ViewColumnMapFile))
             {
                 errorMessage = "Use /M to specify the view column map file";
                 return false;

@@ -5,5 +5,5 @@
 
 using System.Diagnostics.CodeAnalysis;
 
-[assembly: SuppressMessage("Roslynator", "RCS1123:Add parentheses when necessary.", Justification = "Parentheses not needed", Scope = "member", Target = "~M:DMSModelConfigDbUpdater.ModelConfigDbUpdater.UpdateHotlinks(System.String,System.String,System.String,System.Collections.Generic.List{DMSModelConfigDbUpdater.HotLinkInfo})")]
+[assembly: SuppressMessage("Roslynator", "RCS1123:Add parentheses when necessary.", Justification = "Parentheses not needed", Scope = "member", Target = "~M:DMSModelConfigDbUpdater.ModelConfigDbUpdater.UpdateHotlinks(DMSModelConfigDbUpdater.GeneralParameters.ParameterType,System.String,System.String,System.Collections.Generic.List{DMSModelConfigDbUpdater.HotLinkInfo})")]
 [assembly: SuppressMessage("Style", "IDE0066:Convert switch statement to expression", Justification = "Leave as-is for readability", Scope = "member", Target = "~M:DMSModelConfigDbUpdater.ModelConfigDbUpdater.ColumnRenamed(DMSModelConfigDbUpdater.GeneralParameters.ParameterType,System.String,System.String,System.String@,System.Boolean)~System.Boolean")]

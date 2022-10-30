@@ -185,6 +185,78 @@ namespace DMSModelConfigDbUpdater
             return !currentColumnName.Equals(columnNameToUse);
         }
 
+        private void ConvertHiddenColumnToNoDisplay(
+            List<HotLinkInfo> listReportHotlinks,
+            ICollection<string> updatedColumns,
+            string columnNameToFind)
+        {
+            if (!columnNameToFind.StartsWith("#"))
+            {
+                throw new Exception(string.Format(
+                    "Column {0} does not start with #; method ConvertHiddenColumnToNoDisplay should not have been called",
+                    columnNameToFind));
+            }
+
+            var columnNameToUse = columnNameToFind.Substring(1);
+
+            updatedColumns.Add(PossiblyQuoteName(columnNameToUse, Options.QuoteWithSquareBrackets));
+
+            var addNoDisplayLinkType = true;
+            var maxId = 0;
+            var existingHotlinkCount = 0;
+
+            foreach (var item in listReportHotlinks)
+            {
+                var originalColumnName = GetCleanFieldName(item.FieldName, out var prefix);
+
+                maxId = Math.Max(maxId, item.ID);
+
+                if (!originalColumnName.Equals(columnNameToFind, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (item.WhichArg.Trim().Equals(columnNameToFind, StringComparison.OrdinalIgnoreCase))
+                    {
+                        item.WhichArg = columnNameToUse;
+                        item.Updated = true;
+                    }
+
+                    continue;
+                }
+
+                existingHotlinkCount++;
+
+                if (item.LinkType.Trim().Equals("no_export", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Change the link type to "no_display"
+                    item.LinkType = "no_display";
+                    addNoDisplayLinkType = false;
+                }
+
+                // Update to use the new column name
+                item.NewFieldName = prefix + columnNameToUse;
+                item.Updated = true;
+            }
+
+            if (addNoDisplayLinkType)
+            {
+                string fieldName;
+
+                if (existingHotlinkCount > 0)
+                {
+                    OnWarningEvent(
+                        "Hidden field {0} has one or more existing hot links that are not of type 'no_export'; this is unexpected",
+                        columnNameToFind);
+
+                    fieldName = "+" + columnNameToUse;
+                }
+                else
+                {
+                    fieldName = columnNameToUse;
+                }
+
+                listReportHotlinks.Add(new HotLinkInfo(maxId + 1, fieldName, "no_display", "value", true));
+            }
+        }
+
         private string ConvertToSnakeCaseAndUpdatePrefix(string currentName)
         {
             if (currentName.StartsWith("EUS", StringComparison.OrdinalIgnoreCase) && !currentName.StartsWith("EUS_", StringComparison.OrdinalIgnoreCase))
@@ -442,37 +514,39 @@ namespace DMSModelConfigDbUpdater
             mViewNameMap.Clear();
             mViewNameMapWithSchema.Clear();
 
-            var viewColumnMapFile = new FileInfo(Options.ViewColumnMapFile);
-
-            if (!viewColumnMapFile.Exists)
+            if (!string.IsNullOrWhiteSpace(Options.ViewColumnMapFile))
             {
-                OnErrorEvent("View column map file not found: " + viewColumnMapFile.FullName);
-                return false;
+                var viewColumnMapFile = new FileInfo(Options.ViewColumnMapFile);
+
+                if (!viewColumnMapFile.Exists)
+                {
+                    OnErrorEvent("View column map file not found: " + viewColumnMapFile.FullName);
+                    return false;
+                }
+
+                var mapReader = new NameMapReader();
+                RegisterEvents(mapReader);
+
+                // In dictionary tableNameMap, keys are the original (source) table names
+                // and values are WordReplacer classes that track the new table names and new column names in Postgres
+
+                // In dictionary viewColumnNameMap, keys are new table names
+                // and values are a Dictionary of mappings of original column names to new column names in Postgres;
+                // names should not have double quotes around them
+
+                // Dictionary tableNameMapSynonyms has original table names to new table names
+
+                var columnMapFileLoaded = LoadViewColumnMapFile(viewColumnMapFile);
+
+                if (!columnMapFileLoaded)
+                    return false;
             }
-
-            var mapReader = new NameMapReader();
-            RegisterEvents(mapReader);
-
-            // In dictionary tableNameMap, keys are the original (source) table names
-            // and values are WordReplacer classes that track the new table names and new column names in Postgres
-
-            // In dictionary viewColumnNameMap, keys are new table names
-            // and values are a Dictionary of mappings of original column names to new column names in Postgres;
-            // names should not have double quotes around them
-
-            // Dictionary tableNameMapSynonyms has original table names to new table names
-
-            var columnMapFileLoaded = LoadViewColumnMapFile(viewColumnMapFile);
-
-            if (!columnMapFileLoaded)
-                return false;
-
-            var tableNameMapSynonyms = new Dictionary<string, string>();
 
             if (string.IsNullOrWhiteSpace(Options.TableNameMapFile))
                 return true;
 
             var tableNameMapFile = new FileInfo(Options.TableNameMapFile);
+
             if (!tableNameMapFile.Exists)
             {
                 OnErrorEvent("Table name map file not found: " + tableNameMapFile.FullName);
@@ -488,6 +562,8 @@ namespace DMSModelConfigDbUpdater
             {
                 return false;
             }
+
+            var tableNameMapSynonyms = new Dictionary<string, string>();
 
             // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
             foreach (var item in tableNameInfo)
@@ -942,7 +1018,7 @@ namespace DMSModelConfigDbUpdater
                     UpdateFormFields(formFields, entryPageView);
                 }
 
-                if (Options.RenameListReportViewAndColumns)
+                if (Options.RenameListReportViewAndColumns || Options.ConvertHiddenColumnsToNoDisplay)
                 {
                     var listReportView = RenameListReportView(generalParams);
                     UpdateListReportHotlinks(listReportView);
@@ -1435,7 +1511,19 @@ namespace DMSModelConfigDbUpdater
         {
             try
             {
-                var viewNameToUse = RenameViewOrProcedure(generalParams, GeneralParameters.ParameterType.ListReportView);
+                string viewNameToUse;
+
+                // ReSharper disable once ConvertIfStatementToConditionalTernaryExpression
+                if (Options.RenameListReportViewAndColumns)
+                {
+                    viewNameToUse = RenameViewOrProcedure(generalParams, GeneralParameters.ParameterType.ListReportView);
+                }
+                else
+                {
+                    // Leave the view name as-is
+                    viewNameToUse = generalParams.Parameters[GeneralParameters.ParameterType.ListReportView];
+                }
+
                 if (string.IsNullOrWhiteSpace(viewNameToUse))
                     return string.Empty;
 
@@ -1444,14 +1532,33 @@ namespace DMSModelConfigDbUpdater
 
                 foreach (var value in generalParams.Parameters[GeneralParameters.ParameterType.ListReportSortColumn].Split(','))
                 {
-                    if (ColumnRenamed("List Report", viewNameToUse, value.Trim(), out var columnNameToUse))
+                    var trimmedName = value.Trim();
+
+                    if (!Options.RenameListReportViewAndColumns)
+                    {
+                        // This code should only be reached if Options.ConvertHiddenColumnsToNoDisplay is true
+
+                        if (Options.ConvertHiddenColumnsToNoDisplay && trimmedName.StartsWith("#"))
+                        {
+                            listReportSortColumns.Add(trimmedName.Substring(1));
+                            storeNewValue = true;
+                        }
+                        else
+                        {
+                            listReportSortColumns.Add(trimmedName);
+                        }
+
+                        continue;
+                    }
+
+                    if (ColumnRenamed(GeneralParameters.ParameterType.ListReportView, viewNameToUse, trimmedName, out var columnNameToUse))
                     {
                         listReportSortColumns.Add(columnNameToUse);
                         storeNewValue = true;
                     }
                     else
                     {
-                        listReportSortColumns.Add(value.Trim());
+                        listReportSortColumns.Add(trimmedName);
                     }
                 }
 
@@ -2023,9 +2130,17 @@ namespace DMSModelConfigDbUpdater
         {
             try
             {
+                var viewName = generalParams.Parameters[viewType];
+
                 var columnList = generalParams.Parameters[parameterType].Split(',');
 
                 var updatedColumns = new List<string>();
+
+                var hiddenColumnsConverted = 0;
+
+                var listReportHotlinks = Options.ConvertHiddenColumnsToNoDisplay
+                    ? ReadHotlinks(DB_TABLE_LIST_REPORT_HOTLINKS)
+                    : new List<HotLinkInfo>();
 
                 foreach (var currentColumn in columnList)
                 {
@@ -2066,12 +2181,50 @@ namespace DMSModelConfigDbUpdater
                         aliasNameToUse = aliasName;
                     }
 
-                    var columnNameToUse = ColumnRenamed(viewType, generalParams.Parameters[viewType], columnNameToFind, out var newColumnName, snakeCaseNames)
-                        ? newColumnName
-                        : columnNameToFind;
+                    string columnNameToUse;
+
+                    if (Options.RenameListReportViewAndColumns)
+                    {
+                        columnNameToUse = ColumnRenamed(viewType, viewName, columnNameToFind, out var newColumnName, snakeCaseNames)
+                            ? newColumnName
+                            : columnNameToFind;
+                    }
+                    else
+                    {
+                        // This code should only be reached if Options.ConvertHiddenColumnsToNoDisplay is true
+                        columnNameToUse = columnNameToFind;
+                    }
 
                     if (string.IsNullOrWhiteSpace(aliasNameToUse))
                     {
+                        if (columnNameToUse.StartsWith("#"))
+                        {
+                            if (parameterType == GeneralParameters.ParameterType.ListReportDataColumns)
+                            {
+                                if (Options.ConvertHiddenColumnsToNoDisplay)
+                                {
+                                    ConvertHiddenColumnToNoDisplay(listReportHotlinks, updatedColumns, columnNameToUse);
+
+                                    hiddenColumnsConverted++;
+                                    continue;
+                                }
+                            }
+                            else
+                            {
+                                // ToDo: determine when this is unexpected and when this is expected
+
+                                OnWarningEvent(
+                                    "Column {0} starts with a # sign, but it is not a list report data column; this is unexpected (view name: {1})",
+                                    columnNameToUse, generalParams.Parameters[parameterType]);
+
+                                if (Options.ConvertHiddenColumnsToNoDisplay)
+                                {
+                                    updatedColumns.Add(PossiblyQuoteName(columnNameToUse.Substring(1), Options.QuoteWithSquareBrackets));
+                                    continue;
+                                }
+                            }
+                        }
+
                         updatedColumns.Add(PossiblyQuoteName(columnNameToUse, Options.QuoteWithSquareBrackets));
                     }
                     else
@@ -2084,9 +2237,39 @@ namespace DMSModelConfigDbUpdater
                     }
                 }
 
+                // Check for duplicate column names
+                var columnNames = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var columnName in updatedColumns)
+                {
+                    if (columnNames.Contains(columnName))
+                    {
+                        OnWarningEvent("Duplicate column name found in column name list: {0} for view {1}",
+                            columnName, viewName);
+
+                        continue;
+                    }
+
+                    columnNames.Add(columnName);
+                }
+
                 var updatedColumnList = string.Join(", ", updatedColumns);
 
                 UpdateGeneralParameter(generalParams, parameterType, updatedColumnList);
+
+                if (!Options.ConvertHiddenColumnsToNoDisplay || hiddenColumnsConverted == 0)
+                    return;
+
+                SaveListReportHotlinks(viewName, DB_TABLE_LIST_REPORT_HOTLINKS, listReportHotlinks);
+
+                if (Options.PreviewUpdates)
+                    return;
+
+                Console.WriteLine();
+
+                OnStatusEvent("Converted {0} hidden {1} to use hotlink type 'no_display'",
+                    hiddenColumnsConverted,
+                    hiddenColumnsConverted == 1 ? "column" : "columns");
             }
             catch (Exception ex)
             {

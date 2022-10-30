@@ -2,6 +2,13 @@
 {
     internal class HotLinkInfo : BasicField
     {
+        // Ignore Spelling: hotlink
+
+        /// <summary>
+        /// Set this to true if this is a new hotlink that should be appended to the table
+        /// </summary>
+        public bool IsNewHotlink { get; set; }
+
         /// <summary>
         /// Hot link type
         /// </summary>
@@ -29,12 +36,14 @@
         /// <param name="fieldName"></param>
         /// <param name="linkType"></param>
         /// <param name="whichArg"></param>
-        public HotLinkInfo(int id, string fieldName, string linkType, string whichArg) : base(id, fieldName)
+        /// <param name="isNew"></param>
+        public HotLinkInfo(int id, string fieldName, string linkType, string whichArg, bool isNew = false) : base(id, fieldName)
         {
             LinkType = linkType;
             NewFieldName = string.Empty;
             Updated = false;
             WhichArg = whichArg;
+            IsNewHotlink = isNew;
         }
 
         /// <summary>
