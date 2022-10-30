@@ -1542,6 +1542,53 @@ namespace DMSModelConfigDbUpdater
 
             return nameToUse;
         }
+        private int SaveListReportHotlinks(string sourceView, string tableName, List<HotLinkInfo> hotlinks)
+        {
+            if (Options.PreviewUpdates)
+            {
+                Console.WriteLine();
+                OnStatusEvent("Hotlink updates for {0} in {1}", sourceView, CurrentConfigDB);
+            }
+
+            var idFieldName = GetIdFieldName(tableName);
+
+            using var dbCommand = mDbConnectionWriter.CreateCommand();
+
+            var updatedItems = 0;
+
+            foreach (var item in hotlinks)
+            {
+                if (!item.Updated)
+                    continue;
+
+                var nameToUse = string.IsNullOrWhiteSpace(item.NewFieldName) ? item.FieldName : item.NewFieldName;
+
+                if (Options.PreviewUpdates)
+                {
+                    OnStatusEvent("{0,2}: {1,-30} {2,-20} {3}", item.ID, nameToUse, item.LinkType, item.WhichArg);
+                    continue;
+                }
+
+                if (item.IsNewHotlink)
+                {
+                    dbCommand.CommandText = string.Format(
+                        "INSERT INTO {0} ({1}, name, LinkType, WhichArg, Target, Options) " +
+                        "VALUES ( '{2}', '{3}', '{4}', '{5}')",
+                        tableName, idFieldName, item.ID, nameToUse, item.LinkType, item.WhichArg);
+                }
+                else
+                {
+                    dbCommand.CommandText = string.Format(
+                        "UPDATE {0} SET name = '{1}', LinkType = '{2}', WhichArg = '{3}' WHERE {4} = {5}",
+                        tableName, nameToUse, item.LinkType, item.WhichArg, idFieldName, item.ID);
+                }
+
+                dbCommand.ExecuteNonQuery();
+                updatedItems++;
+            }
+
+            return updatedItems;
+        }
 
         /// <summary>
         /// Add a blank link to the console output and optionally to the validation results file
@@ -1958,38 +2005,7 @@ namespace DMSModelConfigDbUpdater
             if (!saveChanges)
                 return;
 
-            if (Options.PreviewUpdates)
-            {
-                Console.WriteLine();
-                OnStatusEvent("Hotlink updates for {0} in {1}", sourceView, CurrentConfigDB);
-            }
-
-            var idFieldName = GetIdFieldName(tableName);
-
-            using var dbCommand = mDbConnectionWriter.CreateCommand();
-
-            var updatedItems = 0;
-
-            foreach (var item in hotlinks)
-            {
-                if (!item.Updated)
-                    continue;
-
-                var nameToUse = string.IsNullOrWhiteSpace(item.NewFieldName) ? item.FieldName : item.NewFieldName;
-
-                if (Options.PreviewUpdates)
-                {
-                    OnStatusEvent("{0,2}: {1,-30} {2,-20} {3}", item.ID, nameToUse, item.LinkType, item.WhichArg);
-                    continue;
-                }
-
-                dbCommand.CommandText = string.Format(
-                    "UPDATE {0} SET name = '{1}', WhichArg = '{2}' WHERE {3} = {4}",
-                    tableName, nameToUse, item.WhichArg, idFieldName, item.ID);
-
-                dbCommand.ExecuteNonQuery();
-                updatedItems++;
-            }
+            var updatedItems = SaveListReportHotlinks(sourceView, tableName, hotlinks);
 
             if (Options.PreviewUpdates)
                 return;
