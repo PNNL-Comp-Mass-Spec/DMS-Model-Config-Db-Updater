@@ -180,8 +180,8 @@ namespace DMSModelConfigDbUpdater
                 }
                 else
                 {
-                    schemaNameToFind = "dbo";
                     nameWithoutSchema = tableOrViewName;
+                    schemaNameToFind = mOptions.UsePostgresSchema ? "public" : "dbo";
                 }
 
                 var databaseColumnInfo = mDatabaseColumns[targetDatabase];
