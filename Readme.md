@@ -21,7 +21,7 @@ DMSModelConfigDbUpdater.exe
   [/RenameList] [/RenameDetail] [/RenameEntry] 
   [/RenameSPs] [/RenameUnknownViews]
   [/ReplaceSpaces] [/SnakeCaseColumns] [/SquareBrackets]
-  [/UsePgSchema]
+  [/ConvertHiddenColums] [/UsePgSchema]
   [/Validate] [/Server] [/ValidateIgnoreErrors]
   [/WriteResults] [/ResultsFile:ValidationResults.txt]
   [/ParamFile:ParamFileName.conf] [/CreateParamFile]
@@ -100,6 +100,9 @@ Use `/SnakeCaseColumns:false` to disable changing unrecognized column names to s
 
 Use `/SquareBrackets` to enable quoting names using square brackets (SQL Server compatible)
 * By default, will quote names using double quotes (if the name contains a space, punctuation, or other non-alphanumeric characters)
+
+Use `/ConvertHiddenColumns` to look for columns that start with `#` and convert them to list report hotlink type `no_display`
+* The `#` sign will be removed from the column names, meaning the source view will need to be updated to remove the `#`
 
 When `/UsePgSchema` is provided, if the object name does not already have a schema and the database group for the page family is defined (using `my_db_group`),
 preface object names with the PostgreSQL schema that applies to the database group
