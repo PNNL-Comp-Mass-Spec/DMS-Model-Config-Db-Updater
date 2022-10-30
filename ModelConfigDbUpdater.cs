@@ -133,52 +133,15 @@ namespace DMSModelConfigDbUpdater
             return itemCount == 1 ? string.Empty : "s";
         }
 
-        private bool ColumnRenamed(GeneralParameters.ParameterType viewType, string viewName, string currentColumnName, out string columnNameToUse, bool snakeCaseName = false)
+        private bool ColumnRenamed(
+            GeneralParameters.ParameterType viewType,
+            string viewName,
+            string currentColumnName,
+            out string columnNameToUse,
+            bool snakeCaseName = false)
         {
-            string sourceViewDescription;
+            var sourceViewDescription = GetViewDescription(viewType);
 
-            switch (viewType)
-            {
-                case GeneralParameters.ParameterType.DetailReportView:
-                case GeneralParameters.ParameterType.DetailReportDataIdColumn:
-                case GeneralParameters.ParameterType.DetailReportDataColumns:
-                case GeneralParameters.ParameterType.PostSubmissionDetailId:
-                    sourceViewDescription = "Detail Report";
-                    break;
-
-                case GeneralParameters.ParameterType.EntryPageView:
-                case GeneralParameters.ParameterType.EntryPageDataIdColumn:
-                case GeneralParameters.ParameterType.EntryPageDataColumns:
-                    sourceViewDescription = "Entry Page";
-                    break;
-
-                case GeneralParameters.ParameterType.ListReportView:
-                case GeneralParameters.ParameterType.ListReportDataColumns:
-                case GeneralParameters.ParameterType.ListReportSortColumn:
-                    sourceViewDescription = "List Report";
-                    break;
-
-                case GeneralParameters.ParameterType.DetailReportSP:
-                case GeneralParameters.ParameterType.ListReportSP:
-                case GeneralParameters.ParameterType.EntryPageSP:
-                case GeneralParameters.ParameterType.OperationsSP:
-                    sourceViewDescription = "Stored Procedure";
-                    break;
-
-                case GeneralParameters.ParameterType.DatabaseGroup:
-                    sourceViewDescription = "Database Group";
-                    break;
-
-                default:
-                    sourceViewDescription = "??";
-                    break;
-            }
-
-            return ColumnRenamed(sourceViewDescription, viewName, currentColumnName, out columnNameToUse, snakeCaseName);
-        }
-
-        private bool ColumnRenamed(string sourceViewDescription, string viewName, string currentColumnName, out string columnNameToUse, bool snakeCaseName = false)
-        {
             if (string.IsNullOrWhiteSpace(currentColumnName))
             {
                 columnNameToUse = string.Empty;
@@ -381,6 +344,29 @@ namespace DMSModelConfigDbUpdater
             return Path.IsPathRooted(validationResultsFileNameOrPath)
                 ? validationResultsFileNameOrPath
                 : Path.Combine(inputDirectoryPath, validationResultsFileNameOrPath);
+        }
+
+        private string GetViewDescription(GeneralParameters.ParameterType viewType)
+        {
+            return viewType switch
+            {
+                GeneralParameters.ParameterType.DetailReportView => "Detail Report",
+                GeneralParameters.ParameterType.DetailReportDataIdColumn => "Detail Report",
+                GeneralParameters.ParameterType.DetailReportDataColumns => "Detail Report",
+                GeneralParameters.ParameterType.PostSubmissionDetailId => "Detail Report",
+                GeneralParameters.ParameterType.EntryPageView => "Entry Page",
+                GeneralParameters.ParameterType.EntryPageDataIdColumn => "Entry Page",
+                GeneralParameters.ParameterType.EntryPageDataColumns => "Entry Page",
+                GeneralParameters.ParameterType.ListReportView => "List Report",
+                GeneralParameters.ParameterType.ListReportDataColumns => "List Report",
+                GeneralParameters.ParameterType.ListReportSortColumn => "List Report",
+                GeneralParameters.ParameterType.DetailReportSP => "Stored Procedure",
+                GeneralParameters.ParameterType.ListReportSP => "Stored Procedure",
+                GeneralParameters.ParameterType.EntryPageSP => "Stored Procedure",
+                GeneralParameters.ParameterType.OperationsSP => "Stored Procedure",
+                GeneralParameters.ParameterType.DatabaseGroup => "Database Group",
+                _ => "??"
+            };
         }
 
         private bool InitializeWriter(FileInfo modelConfigDb)
@@ -1394,7 +1380,7 @@ namespace DMSModelConfigDbUpdater
                 if (string.IsNullOrWhiteSpace(viewNameToUse))
                     return string.Empty;
 
-                if (ColumnRenamed("Entry Page", viewNameToUse, generalParams.Parameters[GeneralParameters.ParameterType.EntryPageDataIdColumn], out var dataIdNameToUse, true))
+                if (ColumnRenamed(GeneralParameters.ParameterType.EntryPageView, viewNameToUse, generalParams.Parameters[GeneralParameters.ParameterType.EntryPageDataIdColumn], out var dataIdNameToUse, true))
                 {
                     UpdateGeneralParameter(generalParams, GeneralParameters.ParameterType.EntryPageDataIdColumn, dataIdNameToUse);
                 }
@@ -1404,7 +1390,7 @@ namespace DMSModelConfigDbUpdater
                     UpdateEntryPageDataColumns(generalParams);
                 }
 
-                if (ColumnRenamed("Entry Page", viewNameToUse, generalParams.Parameters[GeneralParameters.ParameterType.PostSubmissionDetailId], out var postSubmissionNameToUse, true))
+                if (ColumnRenamed(GeneralParameters.ParameterType.EntryPageView, viewNameToUse, generalParams.Parameters[GeneralParameters.ParameterType.PostSubmissionDetailId], out var postSubmissionNameToUse, true))
                 {
                     UpdateGeneralParameter(generalParams, GeneralParameters.ParameterType.PostSubmissionDetailId, postSubmissionNameToUse);
                 }
@@ -1426,7 +1412,7 @@ namespace DMSModelConfigDbUpdater
                 if (string.IsNullOrWhiteSpace(viewNameToUse))
                     return string.Empty;
 
-                if (ColumnRenamed("Detail Report", viewNameToUse, generalParams.Parameters[GeneralParameters.ParameterType.DetailReportDataIdColumn], out var columnNameToUse))
+                if (ColumnRenamed(GeneralParameters.ParameterType.DetailReportView, viewNameToUse, generalParams.Parameters[GeneralParameters.ParameterType.DetailReportDataIdColumn], out var columnNameToUse))
                 {
                     UpdateGeneralParameter(generalParams, GeneralParameters.ParameterType.DetailReportDataIdColumn, columnNameToUse);
                 }
@@ -1726,7 +1712,7 @@ namespace DMSModelConfigDbUpdater
 
                 var detailReportHotlinks = ReadHotlinks(DB_TABLE_DETAIL_REPORT_HOTLINKS);
 
-                UpdateHotlinks("Detail Report", detailReportView, DB_TABLE_DETAIL_REPORT_HOTLINKS, detailReportHotlinks);
+                UpdateHotlinks(GeneralParameters.ParameterType.DetailReportView, detailReportView, DB_TABLE_DETAIL_REPORT_HOTLINKS, detailReportHotlinks);
             }
             catch (Exception ex)
             {
@@ -1764,7 +1750,7 @@ namespace DMSModelConfigDbUpdater
 
                 foreach (var formField in formFields)
                 {
-                    if (!ColumnRenamed("Entry Page", entryPageView, formField.FieldName, out var columnNameToUse, true))
+                    if (!ColumnRenamed(GeneralParameters.ParameterType.EntryPageView, entryPageView, formField.FieldName, out var columnNameToUse, true))
                         continue;
 
                     formField.NewFieldName = columnNameToUse;
@@ -1938,13 +1924,13 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        private void UpdateHotlinks(string sourceViewDescription, string sourceView, string tableName, List<HotLinkInfo> hotlinks)
+        private void UpdateHotlinks(GeneralParameters.ParameterType sourceViewType, string sourceView, string tableName, List<HotLinkInfo> hotlinks)
         {
             foreach (var item in hotlinks)
             {
                 var originalColumnName = GetCleanFieldName(item.FieldName, out var prefix);
 
-                if (ColumnRenamed(sourceViewDescription, sourceView, originalColumnName, out var columnNameToUse))
+                if (ColumnRenamed(sourceViewType, sourceView, originalColumnName, out var columnNameToUse))
                 {
                     item.NewFieldName = prefix + columnNameToUse;
                     item.Updated = true;
@@ -1960,7 +1946,7 @@ namespace DMSModelConfigDbUpdater
                 }
 
                 // ReSharper disable once InvertIf
-                if (ColumnRenamed(sourceViewDescription, sourceView, item.WhichArg, out var targetColumnToUse))
+                if (ColumnRenamed(sourceViewType, sourceView, item.WhichArg, out var targetColumnToUse))
                 {
                     item.WhichArg = targetColumnToUse;
                     item.Updated = true;
@@ -2054,7 +2040,7 @@ namespace DMSModelConfigDbUpdater
                         {
                             // This column is likely a string literal, with an alias
                             // See if the column alias needs to be updated
-                            aliasNameToUse = ColumnRenamed("Entry Page", generalParams.Parameters[viewType], aliasName, out var newAliasName, snakeCaseNames)
+                            aliasNameToUse = ColumnRenamed(viewType, viewName, aliasName, out var newAliasName, snakeCaseNames)
                                 ? newAliasName
                                 : aliasName;
                         }
@@ -2112,7 +2098,7 @@ namespace DMSModelConfigDbUpdater
 
                 var listReportHotlinks = ReadHotlinks(DB_TABLE_LIST_REPORT_HOTLINKS);
 
-                UpdateHotlinks("List Report", listReportView, DB_TABLE_LIST_REPORT_HOTLINKS, listReportHotlinks);
+                UpdateHotlinks(GeneralParameters.ParameterType.ListReportView, listReportView, DB_TABLE_LIST_REPORT_HOTLINKS, listReportHotlinks);
             }
             catch (Exception ex)
             {
@@ -2147,7 +2133,7 @@ namespace DMSModelConfigDbUpdater
         {
             foreach (var item in primaryFilters)
             {
-                if (ColumnRenamed("List Report", sourceView, item.FieldName, out var columnNameToUse))
+                if (ColumnRenamed(GeneralParameters.ParameterType.ListReportView, sourceView, item.FieldName, out var columnNameToUse))
                 {
                     item.NewFieldName = columnNameToUse;
                     item.Updated = true;
