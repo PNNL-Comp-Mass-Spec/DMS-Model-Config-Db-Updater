@@ -291,7 +291,8 @@ namespace DMSModelConfigDbUpdater
                 if (mOptions.UsePostgresSchema)
                 {
                     var connectionString = DbToolsFactory.GetConnectionString(
-                        DbServerTypes.PostgreSQL, mOptions.DatabaseServer, databaseName, "ModelConfigDbValidator");
+                        DbServerTypes.PostgreSQL, mOptions.DatabaseServer, databaseName,
+                        "d3l243", string.Empty, "ModelConfigDbValidator");
 
                     dbTools = DbToolsFactory.GetDBTools(DbServerTypes.PostgreSQL, connectionString);
                 }
