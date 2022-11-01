@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+
 using System.Data.SQLite;
 using System.IO;
 using System.Linq;
@@ -1771,19 +1772,30 @@ namespace DMSModelConfigDbUpdater
 
                 if (item.IsNewHotlink)
                 {
-                    dbCommand.CommandText = string.Format(
+                    currentQuery = string.Format(
                         "INSERT INTO {0} ({1}, name, LinkType, WhichArg, Target, Options) " +
-                        "VALUES ( '{2}', '{3}', '{4}', '{5}')",
+                        "VALUES ( '{2}', '{3}', '{4}', '{5}', '', '')",
                         tableName, idFieldName, item.ID, nameToUse, item.LinkType, item.WhichArg);
                 }
                 else
                 {
-                    dbCommand.CommandText = string.Format(
+                    currentQuery = string.Format(
                         "UPDATE {0} SET name = '{1}', LinkType = '{2}', WhichArg = '{3}' WHERE {4} = {5}",
                         tableName, nameToUse, item.LinkType, item.WhichArg, idFieldName, item.ID);
                 }
 
-                dbCommand.ExecuteNonQuery();
+                dbCommand.CommandText = currentQuery;
+
+                try
+                {
+                    dbCommand.ExecuteNonQuery();
+                }
+                catch (Exception)
+                {
+                    OnWarningEvent("Error runner query: {0}", currentQuery);
+                    throw;
+                }
+
                 updatedItems++;
             }
 
