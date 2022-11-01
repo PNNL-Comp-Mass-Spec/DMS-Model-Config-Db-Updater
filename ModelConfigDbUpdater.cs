@@ -857,6 +857,21 @@ namespace DMSModelConfigDbUpdater
                 return objectName;
             }
 
+            if (objectName.StartsWith("[") && objectName.EndsWith("]"))
+            {
+                // Name surrounded with square brackets
+                if (Options.QuoteWithSquareBrackets)
+                {
+                    // Leave as-is
+                    return objectName;
+                }
+                else
+                {
+                    // Convert to double quotes, if required
+                    objectName = objectName.Substring(1, objectName.Length - 2);
+                }
+            }
+
             if (objectName.StartsWith("\"") && objectName.EndsWith("\""))
             {
                 // Name already surrounded with double quotes; leave as-is
