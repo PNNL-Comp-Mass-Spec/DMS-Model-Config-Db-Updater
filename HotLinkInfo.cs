@@ -1,6 +1,6 @@
 ﻿namespace DMSModelConfigDbUpdater
 {
-    internal class HotLinkInfo : BasicField
+    internal class HotlinkInfo : BasicField
     {
         // Ignore Spelling: hotlink
 
@@ -37,7 +37,7 @@
         /// <param name="linkType"></param>
         /// <param name="whichArg"></param>
         /// <param name="isNew"></param>
-        public HotLinkInfo(int id, string fieldName, string linkType, string whichArg, bool isNew = false) : base(id, fieldName)
+        public HotlinkInfo(int id, string fieldName, string linkType, string whichArg, bool isNew = false) : base(id, fieldName)
         {
             LinkType = linkType;
             NewFieldName = string.Empty;

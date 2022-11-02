@@ -877,7 +877,7 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        private bool ValidateHotlinks(GeneralParameters.ParameterType sourceViewParameter, List<HotLinkInfo> hotlinks, ref int errorCount, bool cacheSourceColumnNames = false)
+        private bool ValidateHotlinks(GeneralParameters.ParameterType sourceViewParameter, List<HotlinkInfo> hotlinks, ref int errorCount, bool cacheSourceColumnNames = false)
         {
             try
             {
@@ -1005,7 +1005,7 @@ namespace DMSModelConfigDbUpdater
             string dataSourceType,
             string sourceTableViewOrProcedureName,
             bool storedProcedureDataSource,
-            List<HotLinkInfo> hotlinks,
+            List<HotlinkInfo> hotlinks,
             SortedSet<string> columnNames,
             ref int errorCount)
         {
