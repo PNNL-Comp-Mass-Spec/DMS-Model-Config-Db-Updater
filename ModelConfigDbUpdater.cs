@@ -261,7 +261,7 @@ namespace DMSModelConfigDbUpdater
 
             foreach (var item in listReportHotlinks)
             {
-                var originalColumnName = GetCleanFieldName(item.FieldName, out var prefix);
+                var originalColumnName = GetCleanFieldName(item, out var prefix);
 
                 if (!originalColumnName.Equals(columnNameToFind, StringComparison.OrdinalIgnoreCase))
                 {
@@ -384,6 +384,20 @@ namespace DMSModelConfigDbUpdater
 
             newFormFieldName = formFieldInfo.NewFieldName;
             return true;
+        }
+
+        /// <summary>
+        /// If hotlink.NewFieldName is defined, look for look for the prefix on that name and return the clean name
+        /// Otherwise, look for the prefix on hotlink.FieldName and return the clean name
+        /// </summary>
+        /// <param name="hotlink"></param>
+        /// <param name="prefix"></param>
+        /// <returns>Name without any initial plus signs</returns>
+        private string GetCleanFieldName(HotlinkInfo hotlink, out string prefix)
+        {
+            return string.IsNullOrWhiteSpace(hotlink.NewFieldName)
+                ? GetCleanFieldName(hotlink.FieldName, out prefix)
+                : GetCleanFieldName(hotlink.NewFieldName, out prefix);
         }
 
         /// <summary>
@@ -2195,7 +2209,7 @@ namespace DMSModelConfigDbUpdater
 
             foreach (var item in hotlinks)
             {
-                var originalColumnName = GetCleanFieldName(item.FieldName, out var prefix);
+                var originalColumnName = GetCleanFieldName(item, out var prefix);
 
                 if (Options.ConvertHiddenColumnsToNoDisplay && originalColumnName.StartsWith("#"))
                 {
