@@ -20,7 +20,8 @@
         public string NewFieldName { get; set; }
 
         /// <summary>
-        /// Set this to true if NewFieldName or WhichArg are updated
+        /// This is set to true if NewFieldName or WhichArg are updated
+        /// It is also set to true if IsNewHotlink is true
         /// </summary>
         public bool Updated { get; set; }
 
@@ -41,7 +42,7 @@
         {
             LinkType = linkType;
             NewFieldName = string.Empty;
-            Updated = false;
+            Updated = isNew;
             WhichArg = whichArg;
             IsNewHotlink = isNew;
         }
