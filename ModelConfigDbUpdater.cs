@@ -368,6 +368,25 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
+        private bool DatabaseTableExists(SQLiteCommand dbCommand, string tableName)
+        {
+            var currentQuery = string.Format("SELECT name FROM sqlite_master WHERE type='table' AND name='{0}';", tableName);
+
+            try
+            {
+                dbCommand.CommandText = currentQuery;
+
+                using var reader = dbCommand.ExecuteReader();
+
+                return reader.Read();
+            }
+            catch (Exception)
+            {
+                OnWarningEvent("Error looking for table {0}: {1}", tableName, currentQuery);
+                throw;
+            }
+        }
+
         private bool FormFieldRenamed(IReadOnlyDictionary<string, FormFieldInfo> renamedFormFields, string formFieldName, out string newFormFieldName)
         {
             if (string.IsNullOrWhiteSpace(formFieldName))
@@ -1772,6 +1791,8 @@ namespace DMSModelConfigDbUpdater
             var updatedItems = 0;
             string currentQuery = string.Empty;
 
+            var tableExists = DatabaseTableExists(dbCommand, tableName);
+
             foreach (var item in hotlinks)
             {
                 if (!item.Updated && !item.IsNewHotlink)
@@ -1785,8 +1806,33 @@ namespace DMSModelConfigDbUpdater
                     continue;
                 }
 
+                string currentQuery;
+
                 if (item.IsNewHotlink)
                 {
+                    if (!tableExists)
+                    {
+                        var makeTableQuery = string.Format(
+                            "CREATE TABLE {0} (" +
+                            "  id INTEGER PRIMARY KEY, name text," +
+                            "  LinkType text, WhichArg text," +
+                            "  Target text, Options text)", tableName);
+
+                        dbCommand.CommandText = makeTableQuery;
+
+                        try
+                        {
+                            dbCommand.ExecuteNonQuery();
+                        }
+                        catch (Exception)
+                        {
+                            OnWarningEvent("Error creating table {0}: {1}", tableName, makeTableQuery);
+                            throw;
+                        }
+
+                        tableExists = true;
+                    }
+
                     currentQuery = string.Format(
                         "INSERT INTO {0} ({1}, name, LinkType, WhichArg, Target, Options) " +
                         "VALUES ( '{2}', '{3}', '{4}', '{5}', '', '')",
