@@ -135,15 +135,19 @@ namespace DMSModelConfigDbUpdater
             {
                 maxId = Math.Max(maxId, item.ID);
 
-                if (item.NewFieldName.Equals(updatedColumnName))
-                {
-                    existingHotlinkCount++;
+                hotlinkNames.Add(item.NewFieldName);
 
-                    if (item.LinkType.Trim().Equals("no_display"))
-                    {
-                        // This field already has a hotlink with type "no_display" (likely added when the field was renamed)
-                        return;
-                    }
+                var cleanName = GetCleanFieldName(item, out _);
+
+                if (!cleanName.Equals(updatedColumnName))
+                    continue;
+
+                existingHotlinkCount++;
+
+                if (item.LinkType.Trim().Equals("no_display"))
+                {
+                    // This field already has a hotlink with type "no_display" (likely added when the field was renamed)
+                    return;
                 }
             }
 
@@ -162,7 +166,14 @@ namespace DMSModelConfigDbUpdater
                 fieldName = updatedColumnName;
             }
 
-            hotlinks.Add(new HotLinkInfo(maxId + 1, fieldName, "no_display", "value", true));
+            var hotlinkName = GetUniqueName(hotlinkNames, fieldName);
+
+            if (!hotlinkName.Equals(fieldName))
+            {
+                Console.WriteLine("Hotlink field name changed from {0} to {1}", fieldName, hotlinkName);
+            }
+
+            hotlinks.Add(new HotlinkInfo(maxId + 1, hotlinkName, "no_display", "value", true));
         }
 
         /// <summary>
@@ -290,8 +301,8 @@ namespace DMSModelConfigDbUpdater
             HotlinkInfo item,
             string prefix,
             string columnNameToUse,
-            Dictionary<string, bool> renamedHiddenColumns)
             ISet<string> hotlinkNames,
+            IDictionary<string, bool> renamedHiddenColumns)
         {
             // Update to use the new column name
             item.NewFieldName = prefix + columnNameToUse;
@@ -314,7 +325,7 @@ namespace DMSModelConfigDbUpdater
 
             if (renamedHiddenColumns.ContainsKey(item.NewFieldName))
             {
-                item.NewFieldName = GetUniqueName(hotLinkNames, item.NewFieldName);
+                return;
             }
 
             renamedHiddenColumns.Add(item.NewFieldName, appendNoDisplayHotlink);
@@ -487,7 +498,7 @@ namespace DMSModelConfigDbUpdater
             return periodIndex > 0 ? objectName.Substring(0, periodIndex) : "public";
         }
 
-        private string GetUniqueName(SortedSet<string> nameList, string currentName, string prefixAddon = "+")
+        private string GetUniqueName(ISet<string> nameList, string currentName, string prefixAddon = "+")
         {
             while (nameList.Contains(currentName))
             {
@@ -900,11 +911,9 @@ namespace DMSModelConfigDbUpdater
                     // Leave as-is
                     return objectName;
                 }
-                else
-                {
-                    // Convert to double quotes, if required
-                    objectName = objectName.Substring(1, objectName.Length - 2);
-                }
+
+                // Convert to double quotes, if required
+                objectName = objectName.Substring(1, objectName.Length - 2);
             }
 
             if (objectName.StartsWith("\"") && objectName.EndsWith("\""))
@@ -1147,10 +1156,11 @@ namespace DMSModelConfigDbUpdater
 
                     var listReportView = RenameListReportView(generalParams, listReportHotlinks);
 
-                    UpdateListReportHotlinks(listReportView, listReportHotlinks);
-
                     // Update list_report_primary_filter and primary_filter_choosers
-                    UpdateListReportPrimaryFilter(listReportView);
+                    UpdateListReportPrimaryFilter(listReportView, listReportHotlinks);
+
+                    // This method will call SaveListReportHotlinks if any hotlinks are added or updated
+                    UpdateListReportHotlinks(listReportView, listReportHotlinks);
                 }
 
                 if (Options.RenameDetailReportViewAndColumns)
@@ -1660,20 +1670,21 @@ namespace DMSModelConfigDbUpdater
                 {
                     var trimmedName = value.Trim();
 
+                    if (Options.ConvertHiddenColumnsToNoDisplay && trimmedName.StartsWith("#"))
+                    {
+                        var updatedColumnName = trimmedName.Substring(1);
+
+                        listReportSortColumns.Add(updatedColumnName);
+                        storeNewValue = true;
+
+                        AppendNoDisplayHotlink(listReportHotlinks, updatedColumnName);
+                        continue;
+                    }
+
                     if (!Options.RenameListReportViewAndColumns)
                     {
                         // This code should only be reached if Options.ConvertHiddenColumnsToNoDisplay is true
-
-                        if (Options.ConvertHiddenColumnsToNoDisplay && trimmedName.StartsWith("#"))
-                        {
-                            listReportSortColumns.Add(trimmedName.Substring(1));
-                            storeNewValue = true;
-                        }
-                        else
-                        {
-                            listReportSortColumns.Add(trimmedName);
-                        }
-
+                        listReportSortColumns.Add(trimmedName);
                         continue;
                     }
 
@@ -1789,7 +1800,6 @@ namespace DMSModelConfigDbUpdater
             using var dbCommand = mDbConnectionWriter.CreateCommand();
 
             var updatedItems = 0;
-            string currentQuery = string.Empty;
 
             var tableExists = DatabaseTableExists(dbCommand, tableName);
 
@@ -2291,7 +2301,7 @@ namespace DMSModelConfigDbUpdater
                 // ReSharper disable once InvertIf
                 if (ColumnRenamed(sourceViewType, sourceView, item.WhichArg, out var targetColumnToUse))
                 {
-                    if (item.WhichArg.StartsWith("#") && !targetColumnToUse.StartsWith("#") && !renamedHiddenColumns.ContainsKey(targetColumnToUse))
+                    if (item.WhichArg.Trim().StartsWith("#") && !targetColumnToUse.StartsWith("#") && !renamedHiddenColumns.ContainsKey(targetColumnToUse))
                     {
                         renamedHiddenColumns.Add(targetColumnToUse, true);
                     }
@@ -2305,7 +2315,6 @@ namespace DMSModelConfigDbUpdater
             {
                 if (convertedColumn.Value)
                 {
-                    var hotLinkName = GetUniqueName(hotLinkNames, convertedColumn.Key);
                     AppendNoDisplayHotlink(hotlinks, convertedColumn.Key);
                 }
             }
@@ -2404,7 +2413,7 @@ namespace DMSModelConfigDbUpdater
 
                     if (string.IsNullOrWhiteSpace(aliasNameToUse))
                     {
-                        if (columnNameToUse.StartsWith("#"))
+                        if (columnNameToUse.Trim().StartsWith("#"))
                         {
                             if (parameterType == GeneralParameters.ParameterType.ListReportDataColumns)
                             {
@@ -2484,7 +2493,20 @@ namespace DMSModelConfigDbUpdater
             {
                 if (string.IsNullOrWhiteSpace(listReportView))
                 {
-                    return;
+                    if (listReportHotlinks.Count == 0)
+                        return;
+
+                    // Hotlinks are defined, but no source view is defined
+                    // This will happen for page families that call a stored procedure
+
+                    var callUpdateMethod =
+                        Options.ConvertHiddenColumnsToNoDisplay && listReportHotlinks.Any(item => item.FieldName.Trim().StartsWith("#")) ||
+                        listReportHotlinks.Any(item => item.Updated);
+
+                    if (!callUpdateMethod)
+                    {
+                        return;
+                    }
                 }
 
                 UpdateHotlinks(GeneralParameters.ParameterType.ListReportView, listReportView, DB_TABLE_LIST_REPORT_HOTLINKS, listReportHotlinks);
@@ -2499,7 +2521,8 @@ namespace DMSModelConfigDbUpdater
         /// Update column names referenced by list report primary filters
         /// </summary>
         /// <param name="listReportView"></param>
-        private void UpdateListReportPrimaryFilter(string listReportView)
+        /// <param name="listReportHotlinks"></param>
+        private void UpdateListReportPrimaryFilter(string listReportView, List<HotlinkInfo> listReportHotlinks)
         {
             try
             {
@@ -2510,7 +2533,7 @@ namespace DMSModelConfigDbUpdater
 
                 var primaryFilters = ReadPrimaryFilters(DB_TABLE_LIST_REPORT_PRIMARY_FILTER);
 
-                UpdatePrimaryFilters(listReportView, DB_TABLE_LIST_REPORT_PRIMARY_FILTER, primaryFilters);
+                UpdatePrimaryFilters(listReportView, DB_TABLE_LIST_REPORT_PRIMARY_FILTER, primaryFilters, listReportHotlinks);
             }
             catch (Exception ex)
             {
@@ -2518,10 +2541,19 @@ namespace DMSModelConfigDbUpdater
             }
         }
 
-        private void UpdatePrimaryFilters(string sourceView, string tableName, List<PrimaryFilterInfo> primaryFilters)
+        private void UpdatePrimaryFilters(string sourceView, string tableName, List<PrimaryFilterInfo> primaryFilters, List<HotlinkInfo> hotlinks)
         {
             foreach (var item in primaryFilters)
             {
+                if (Options.ConvertHiddenColumnsToNoDisplay && item.FieldName.Trim().StartsWith("#"))
+                {
+                    item.NewFieldName = item.FieldName.Substring(1);
+                    item.Updated = true;
+
+                    AppendNoDisplayHotlink(hotlinks, item.NewFieldName);
+                    continue;
+                }
+
                 if (ColumnRenamed(GeneralParameters.ParameterType.ListReportView, sourceView, item.FieldName, out var columnNameToUse))
                 {
                     item.NewFieldName = columnNameToUse;
