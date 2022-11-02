@@ -450,9 +450,6 @@ namespace DMSModelConfigDbUpdater
             {
                 validationCompleted.Add(ValidateFormFieldNames(ref errorCount));
 
-                // ToDo:
-                // Validate form field names general parameters post_submission_detail_id and entry_page_data_id_col parameters
-
                 validationCompleted.Add(ValidateFormFieldChoosers(ref errorCount));
 
                 validationCompleted.Add(ValidateFormFieldOptions(ref errorCount));
