@@ -126,7 +126,7 @@ namespace DMSModelConfigDbUpdater
 
         private void AppendNoDisplayHotlink(List<HotlinkInfo> hotlinks, string updatedColumnName)
         {
-            var hotlinkNames = new SortedSet<string>();
+            var hotlinkNames = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
 
             var existingHotlinkCount = 0;
             var maxId = 0;
@@ -139,7 +139,7 @@ namespace DMSModelConfigDbUpdater
 
                 var cleanName = GetCleanFieldName(item, out _);
 
-                if (!cleanName.Equals(updatedColumnName))
+                if (!cleanName.Equals(updatedColumnName, StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 existingHotlinkCount++;
@@ -268,7 +268,7 @@ namespace DMSModelConfigDbUpdater
             // Values are True if a "no_display" hotlink needs to be appended, false if a "no_export" hotlink was converted to "no_display"
             var renamedHiddenColumns = new Dictionary<string, bool>();
 
-            var hotlinkNames = new SortedSet<string>();
+            var hotlinkNames = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var item in listReportHotlinks)
             {
@@ -2261,7 +2261,7 @@ namespace DMSModelConfigDbUpdater
             // Values are True if a "no_display" hotlink needs to be appended, false if a "no_export" hotlink was converted to "no_display"
             var renamedHiddenColumns = new Dictionary<string, bool>();
 
-            var hotlinkNames = new SortedSet<string>();
+            var hotlinkNames = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var item in hotlinks)
             {
