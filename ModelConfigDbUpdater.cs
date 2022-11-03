@@ -1159,7 +1159,7 @@ namespace DMSModelConfigDbUpdater
                     // Update list_report_primary_filter and primary_filter_choosers
                     UpdateListReportPrimaryFilter(listReportView, listReportHotlinks);
 
-                    // This method will call SaveListReportHotlinks if any hotlinks are added or updated
+                    // This method will call SaveHotlinks if any hotlinks are added or updated
                     UpdateListReportHotlinks(listReportView, listReportHotlinks);
                 }
 
@@ -1787,7 +1787,14 @@ namespace DMSModelConfigDbUpdater
             return nameToUse;
         }
 
-        private int SaveListReportHotlinks(string sourceView, string tableName, List<HotlinkInfo> hotlinks)
+        /// <summary>
+        /// Update the hotlink table for a list report or detail report
+        /// </summary>
+        /// <param name="sourceView"></param>
+        /// <param name="tableName"></param>
+        /// <param name="hotlinks"></param>
+        /// <returns>The number of updated items</returns>
+        private int SaveHotlinks(string sourceView, string tableName, List<HotlinkInfo> hotlinks)
         {
             if (Options.PreviewUpdates)
             {
@@ -2324,7 +2331,7 @@ namespace DMSModelConfigDbUpdater
             if (!saveChanges)
                 return;
 
-            var updatedItems = SaveListReportHotlinks(sourceView, tableName, hotlinks);
+            var updatedItems = SaveHotlinks(sourceView, tableName, hotlinks);
 
             if (Options.PreviewUpdates)
                 return;
