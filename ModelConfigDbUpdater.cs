@@ -2296,26 +2296,8 @@ namespace DMSModelConfigDbUpdater
                     item.Updated = true;
                 }
 
-                // List report hotlinks often use "value" to indicate that the value to use in the link is the same column that the hotlink appears in
-                // Hotlinks with an empty string for WhichArg include color_label and literal_link
+                UpdateHotlinksCheckWhichArg(sourceViewType, sourceView, tableName, item, renamedHiddenColumns);
 
-                if (string.IsNullOrWhiteSpace(item.WhichArg) ||
-                    tableName.Equals(DB_TABLE_LIST_REPORT_HOTLINKS) && item.WhichArg.Equals("value", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                // ReSharper disable once InvertIf
-                if (ColumnRenamed(sourceViewType, sourceView, item.WhichArg, out var targetColumnToUse))
-                {
-                    if (item.WhichArg.Trim().StartsWith("#") && !targetColumnToUse.StartsWith("#") && !renamedHiddenColumns.ContainsKey(targetColumnToUse))
-                    {
-                        renamedHiddenColumns.Add(targetColumnToUse, true);
-                    }
-
-                    item.WhichArg = targetColumnToUse;
-                    item.Updated = true;
-                }
             }
 
             foreach (var convertedColumn in renamedHiddenColumns)
@@ -2339,6 +2321,36 @@ namespace DMSModelConfigDbUpdater
             OnStatusEvent(
                 "{0,-25} Renamed {1} hotlink{2} in '{3}'", CurrentConfigDB + ":",
                 updatedItems, CheckPlural(updatedItems), sourceView);
+        }
+
+
+        private void UpdateHotlinksCheckWhichArg(
+            GeneralParameters.ParameterType sourceViewType,
+            string sourceView,
+            string tableName,
+            HotlinkInfo item,
+            IDictionary<string, bool> renamedHiddenColumns)
+        {
+            // Exit this method if WhichArg is an empty string; color_label and literal_link hotlinks do not use WhichArg
+
+            // Also exit this method for list report hotlinks that use "value" to indicate that the value to use in the link is the same column that the hotlink references
+
+            if (string.IsNullOrWhiteSpace(item.WhichArg) ||
+                tableName.Equals(DB_TABLE_LIST_REPORT_HOTLINKS) && item.WhichArg.Equals("value", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            if (!ColumnRenamed(sourceViewType, sourceView, item.WhichArg, out var targetColumnForWhichArg))
+                return;
+
+            if (item.WhichArg.Trim().StartsWith("#") && !targetColumnForWhichArg.StartsWith("#") && !renamedHiddenColumns.ContainsKey(targetColumnForWhichArg))
+            {
+                renamedHiddenColumns.Add(targetColumnForWhichArg, true);
+            }
+
+            item.WhichArg = targetColumnForWhichArg;
+            item.Updated = true;
         }
 
         private void UpdateListOfDataColumns(
