@@ -124,7 +124,7 @@ namespace DMSModelConfigDbUpdater
             mViewNameMapWithSchema = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
-        private void AppendNoDisplayHotlink(List<HotlinkInfo> hotlinks, string updatedColumnName)
+        private void AppendNoDisplayHotlink(List<HotlinkInfo> hotlinks, string updatedColumnName, string whichArgField = "value")
         {
             var hotlinkNames = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -173,7 +173,7 @@ namespace DMSModelConfigDbUpdater
                 Console.WriteLine("Hotlink field name changed from {0} to {1}", fieldName, hotlinkName);
             }
 
-            hotlinks.Add(new HotlinkInfo(maxId + 1, hotlinkName, "no_display", "value", true));
+            hotlinks.Add(new HotlinkInfo(maxId + 1, hotlinkName, "no_display", whichArgField, string.Empty, true));
         }
 
         /// <summary>
@@ -1166,6 +1166,8 @@ namespace DMSModelConfigDbUpdater
                 if (Options.RenameDetailReportViewAndColumns)
                 {
                     var detailReportView = RenameDetailReportView(generalParams);
+
+                    // This method will call SaveHotlinks if any hotlinks are added or updated
                     UpdateDetailReportHotlinks(detailReportView);
                 }
 
@@ -1445,7 +1447,7 @@ namespace DMSModelConfigDbUpdater
 
             using var dbCommand = mDbConnectionReader.CreateCommand();
 
-            dbCommand.CommandText = string.Format("SELECT {0}, name, LinkType, WhichArg FROM {1}", idFieldName, tableName);
+            dbCommand.CommandText = string.Format("SELECT {0}, name, LinkType, WhichArg, Target FROM {1}", idFieldName, tableName);
 
             using var reader = dbCommand.ExecuteReader();
 
@@ -1455,8 +1457,9 @@ namespace DMSModelConfigDbUpdater
                 var fieldName = SQLiteUtilities.GetString(reader, "name");
                 var linkType = SQLiteUtilities.GetString(reader, "LinkType");
                 var whichArg = SQLiteUtilities.GetString(reader, "WhichArg");
+                var target = SQLiteUtilities.GetString(reader, "Target");
 
-                hotlinks.Add(new HotlinkInfo(id, fieldName, linkType, whichArg));
+                hotlinks.Add(new HotlinkInfo(id, fieldName, linkType, whichArg, target));
             }
 
             return hotlinks;
@@ -1808,6 +1811,8 @@ namespace DMSModelConfigDbUpdater
 
             var updatedItems = 0;
 
+            var noDisplayHotlinks = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+
             var tableExists = DatabaseTableExists(dbCommand, tableName);
 
             foreach (var item in hotlinks)
@@ -1816,6 +1821,17 @@ namespace DMSModelConfigDbUpdater
                     continue;
 
                 var nameToUse = string.IsNullOrWhiteSpace(item.NewFieldName) ? item.FieldName : item.NewFieldName;
+
+                if (item.LinkType.Trim().Equals("no_display"))
+                {
+                    if (noDisplayHotlinks.Contains(nameToUse))
+                    {
+                        OnWarningEvent("Skipping duplicate no_display hotlink for field {0}", nameToUse);
+                        continue;
+                    }
+
+                    noDisplayHotlinks.Add(nameToUse);
+                }
 
                 if (Options.PreviewUpdates)
                 {
@@ -1852,14 +1868,14 @@ namespace DMSModelConfigDbUpdater
 
                     currentQuery = string.Format(
                         "INSERT INTO {0} ({1}, name, LinkType, WhichArg, Target, Options) " +
-                        "VALUES ( '{2}', '{3}', '{4}', '{5}', '', '')",
-                        tableName, idFieldName, item.ID, nameToUse, item.LinkType, item.WhichArg);
+                        "VALUES ( '{2}', '{3}', '{4}', '{5}', '{6}', '')",
+                        tableName, idFieldName, item.ID, nameToUse, item.LinkType, item.WhichArg, item.Target);
                 }
                 else
                 {
                     currentQuery = string.Format(
-                        "UPDATE {0} SET name = '{1}', LinkType = '{2}', WhichArg = '{3}' WHERE {4} = {5}",
-                        tableName, nameToUse, item.LinkType, item.WhichArg, idFieldName, item.ID);
+                        "UPDATE {0} SET name = '{1}', LinkType = '{2}', WhichArg = '{3}', Target = '{4}' WHERE {5} = {6}",
+                        tableName, nameToUse, item.LinkType, item.WhichArg, item.Target, idFieldName, item.ID);
                 }
 
                 dbCommand.CommandText = currentQuery;
@@ -2298,13 +2314,18 @@ namespace DMSModelConfigDbUpdater
 
                 UpdateHotlinksCheckWhichArg(sourceViewType, sourceView, tableName, item, renamedHiddenColumns);
 
+                UpdateHotlinksCheckTarget(sourceViewType, sourceView, item, renamedHiddenColumns);
             }
 
             foreach (var convertedColumn in renamedHiddenColumns)
             {
                 if (convertedColumn.Value)
                 {
-                    AppendNoDisplayHotlink(hotlinks, convertedColumn.Key);
+                    var whichArg = sourceViewType is GeneralParameters.ParameterType.DetailReportSP or GeneralParameters.ParameterType.DetailReportView
+                        ? string.Empty
+                        : "value";
+
+                    AppendNoDisplayHotlink(hotlinks, convertedColumn.Key, whichArg);
                 }
             }
 
@@ -2323,6 +2344,25 @@ namespace DMSModelConfigDbUpdater
                 updatedItems, CheckPlural(updatedItems), sourceView);
         }
 
+        private void UpdateHotlinksCheckTarget(
+            GeneralParameters.ParameterType sourceViewType,
+            string sourceView, HotlinkInfo item,
+            IDictionary<string, bool> renamedHiddenColumns)
+        {
+            if (string.IsNullOrWhiteSpace(item.Target))
+                return;
+
+            if (!ColumnRenamed(sourceViewType, sourceView, item.Target, out var targetColumnToUse))
+                return;
+
+            if (item.Target.Trim().StartsWith("#") && !targetColumnToUse.StartsWith("#") && !renamedHiddenColumns.ContainsKey(targetColumnToUse))
+            {
+                renamedHiddenColumns.Add(targetColumnToUse, true);
+            }
+
+            item.Target = targetColumnToUse;
+            item.Updated = true;
+        }
 
         private void UpdateHotlinksCheckWhichArg(
             GeneralParameters.ParameterType sourceViewType,

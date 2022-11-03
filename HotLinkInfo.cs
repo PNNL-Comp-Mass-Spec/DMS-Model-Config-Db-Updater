@@ -20,6 +20,11 @@
         public string NewFieldName { get; set; }
 
         /// <summary>
+        /// Target field name
+        /// </summary>
+        public string Target { get; set; }
+
+        /// <summary>
         /// This is set to true if NewFieldName or WhichArg are updated
         /// It is also set to true if IsNewHotlink is true
         /// </summary>
@@ -37,13 +42,16 @@
         /// <param name="fieldName"></param>
         /// <param name="linkType"></param>
         /// <param name="whichArg"></param>
+        /// <param name="target"></param>
         /// <param name="isNew"></param>
-        public HotlinkInfo(int id, string fieldName, string linkType, string whichArg, bool isNew = false) : base(id, fieldName)
+        public HotlinkInfo(int id, string fieldName, string linkType, string whichArg, string target, bool isNew = false) : base(id, fieldName)
         {
             LinkType = linkType;
+            WhichArg = whichArg;
+            Target = target;
+
             NewFieldName = string.Empty;
             Updated = isNew;
-            WhichArg = whichArg;
             IsNewHotlink = isNew;
         }
 
