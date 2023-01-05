@@ -408,7 +408,9 @@ namespace DMSModelConfigDbUpdater
             if (!externalSource.SourceType.Equals("ColName") &&
                 !externalSource.SourceType.Equals("Literal") &&
                 !externalSource.SourceType.Equals("PostName") &&
-                !externalSource.SourceType.Equals("ColName.action.Scrub"))
+                !externalSource.SourceType.Equals("ColName.action.Scrub") &&
+                !externalSource.SourceType.Equals("ColName.action.ExtractUsername") &&
+                !externalSource.SourceType.Equals("ColName.action.ExtractEUSId"))
             {
                 OnWarningEvent(
                     "{0,-25} External source with ID {1} does not have source type ColName or Literal: {2}",
