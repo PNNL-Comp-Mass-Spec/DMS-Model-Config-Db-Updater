@@ -1050,6 +1050,7 @@ namespace DMSModelConfigDbUpdater
                 var columnName = mDbUpdater.GetCleanFieldName(item.FieldName, out _);
 
                 var validColumn = false;
+                var mismatchedCase = false;
 
                 // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
                 foreach (var dbColumn in columnNames)
@@ -1073,11 +1074,12 @@ namespace DMSModelConfigDbUpdater
                         dataSourceType,
                         dbColumn);
 
+                    mismatchedCase = true;
                     errorCount++;
                     break;
                 }
 
-                if (validColumn)
+                if (validColumn || mismatchedCase)
                     continue;
 
                 if (columnName.Equals("Sel."))
