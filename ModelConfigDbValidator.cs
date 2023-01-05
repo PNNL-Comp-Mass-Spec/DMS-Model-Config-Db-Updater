@@ -759,7 +759,7 @@ namespace DMSModelConfigDbUpdater
             {
                 var entryPageTableOrView = mGeneralParams.Parameters[GeneralParameters.ParameterType.EntryPageView];
 
-                if (string.IsNullOrWhiteSpace(entryPageTableOrView) || entryPageTableOrView.Equals("V_@@@_Entry"))
+                if (string.IsNullOrWhiteSpace(entryPageTableOrView) || entryPageTableOrView.Equals("V_@@@_Entry", StringComparison.OrdinalIgnoreCase))
                     return true;
 
                 if (!GetColumnNamesInTableOrView(entryPageTableOrView, out var columnNames, out var targetDatabase))
@@ -924,7 +924,7 @@ namespace DMSModelConfigDbUpdater
                     dataSourceType = sourceTableOrView.StartsWith("T_", StringComparison.OrdinalIgnoreCase) ? "table" : "view";
                     sourceTableViewOrProcedureName = sourceTableOrView;
 
-                    if (sourceTableOrView.Equals("V_@@@_Detail_Report"))
+                    if (sourceTableOrView.Equals("V_@@@_Detail_Report", StringComparison.OrdinalIgnoreCase))
                     {
                         // This is a special placeholder view in new.db
                         // It does not have any column names to cache
