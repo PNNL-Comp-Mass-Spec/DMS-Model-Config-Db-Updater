@@ -230,9 +230,12 @@ namespace DMSModelConfigDbUpdater
                 return !currentColumnName.Equals(columnNameToUse);
             }
 
-            columnNameToUse = snakeCaseName && Options.SnakeCaseColumnNames
+            var columnNameCandidate = snakeCaseName && Options.SnakeCaseColumnNames
                 ? ConvertToSnakeCaseAndUpdatePrefix(columnInfo.NewColumnName)
                 : columnInfo.NewColumnName;
+
+            columnNameToUse = Options.ChangeColumnNamesToLowerCase
+                ? columnNameCandidate.ToLower() : columnNameCandidate;
 
             return !currentColumnName.Equals(columnNameToUse);
         }
@@ -2035,14 +2038,23 @@ namespace DMSModelConfigDbUpdater
 
         private string UpdateColumnName(string currentColumnName, bool snakeCaseName)
         {
-            var columnNameToUse = Options.ReplaceSpacesWithUnderscores
+            var columnNameToExamine = Options.ReplaceSpacesWithUnderscores
                 ? currentColumnName.Replace(' ', '_')
                 : currentColumnName;
 
-            if (!snakeCaseName || !Options.SnakeCaseColumnNames)
-                return columnNameToUse;
+            string columnNameCandidate;
 
-            return ConvertToSnakeCaseAndUpdatePrefix(currentColumnName);
+            if (snakeCaseName && Options.SnakeCaseColumnNames)
+            {
+                columnNameCandidate = ConvertToSnakeCaseAndUpdatePrefix(columnNameToExamine);
+            }
+            else
+            {
+                columnNameCandidate = columnNameToExamine;
+            }
+
+            return Options.ChangeColumnNamesToLowerCase
+                ? columnNameCandidate.ToLower() : columnNameCandidate;
         }
 
         private void UpdateDetailReportDataColumns(GeneralParameters generalParams)

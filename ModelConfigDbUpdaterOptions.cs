@@ -12,7 +12,7 @@ namespace DMSModelConfigDbUpdater
         /// <summary>
         /// Program date
         /// </summary>
-        public const string PROGRAM_DATE = "November 2, 2022";
+        public const string PROGRAM_DATE = "January 4, 2023";
 
         [Option("InputDirectory", "Input", "I", ArgPosition = 1, HelpShowsDefault = false, IsInputFilePath = false,
             HelpText = "Directory with the DMS model config database files to update\n" +
@@ -80,6 +80,11 @@ namespace DMSModelConfigDbUpdater
         [Option("SnakeCaseColumnNames", "SnakeCaseColumns", HelpShowsDefault = true,
             HelpText = "When true, snake case any column names that are not defined in the View column map file")]
         public bool SnakeCaseColumnNames { get; set; } = true;
+
+        [Option("ChangeColumnNamesToLowerCase", "LowercaseColumnNames", HelpShowsDefault = true,
+            HelpText = "When true, change column names to lowercase (if not defined in the View column map file)\n" +
+                       "When true, also update list report and detail report hotlinks")]
+        public bool ChangeColumnNamesToLowerCase { get; set; }
 
         [Option("QuoteWithSquareBrackets", "SquareBrackets", HelpShowsDefault = true,
             HelpText = "When false, quote names with double quotes (PostgreSQL compatible)\nWhen true, quote names with square brackets (SQL Server compatible)")]
@@ -173,6 +178,7 @@ namespace DMSModelConfigDbUpdater
                 {
                     Console.WriteLine(" {0,-32} {1}", "Use Development DBs:", UseDevelopmentDatabases);
                 }
+
                 Console.WriteLine(" {0,-32} {1}", "Continue Validating If Errors:", ValidateColumnNamesIgnoreErrors);
 
                 Console.WriteLine(" {0,-32} {1}", "Save Validation Results:", SaveValidateResultsToFile);
@@ -211,6 +217,8 @@ namespace DMSModelConfigDbUpdater
             Console.WriteLine(" {0,-40} {1}", "Replace Spaces With Underscores:", ReplaceSpacesWithUnderscores);
 
             Console.WriteLine(" {0,-40} {1}", "Snake Case Column Names:", SnakeCaseColumnNames);
+
+            Console.WriteLine(" {0,-40} {1}", "Change Column Names to Lowercase:", ChangeColumnNamesToLowerCase);
 
             Console.WriteLine(" {0,-40} {1}", "Quote With Square Brackets:", QuoteWithSquareBrackets);
 
