@@ -311,9 +311,30 @@ namespace DMSModelConfigDbUpdater
                         serverToUse = mOptions.DatabaseServer;
                     }
 
+                    string databaseToUse;
+
+                    if (mOptions.UseDevelopmentDatabases)
+                    {
+                        databaseToUse = databaseName.ToLower() switch
+                        {
+                            "dms_capture" => "DMS_Capture_T3",
+                            "dms_data_package" => "DMS_Data_Package_T3",
+                            "dms_pipeline" => "DMS_Pipeline_T3",
+                            "dms5" => "dms5_t3",
+                            "ontology_lookup" => "Ontology_Lookup",
+                            "manager_control" => "Manager_Control_T3",
+                            "protein_sequences" => "Protein_Sequences_T3",
+                            _ => databaseName
+                        };
+                    }
+                    else
+                    {
+                        databaseToUse = databaseName;
+                    }
+
                     // SQL Server
                     var connectionString = DbToolsFactory.GetConnectionString(
-                        DbServerTypes.MSSQLServer, serverToUse, databaseName, "ModelConfigDbValidator");
+                        DbServerTypes.MSSQLServer, serverToUse, databaseToUse, "ModelConfigDbValidator");
 
                     dbTools = DbToolsFactory.GetDBTools(DbServerTypes.MSSQLServer, connectionString);
                 }
