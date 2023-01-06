@@ -2364,6 +2364,30 @@ namespace DMSModelConfigDbUpdater
             if (string.IsNullOrWhiteSpace(item.Target))
                 return;
 
+            switch (item.LinkType.ToLower())
+            {
+                case "detail-report":
+                case "invoke_entity":
+                case "invoke_multi_col":
+                case "link_list":
+                case "row_to_url":
+                case "row_to_json":
+                    // The target is a page family name followed by /show or /report, plus possibly some filter text
+                    // Do not change the text
+                    return;
+
+                case "doi_link":
+                case "format_date":
+                case "image_link":
+                case "inplace_edit":
+                case "literal_link":
+                case "markup":
+                case "masked_link":
+                case "min_col_width":
+                    // Do not update the text
+                    return;
+            }
+
             if (!ColumnRenamed(sourceViewType, sourceView, item.Target, out var targetColumnToUse))
                 return;
 
