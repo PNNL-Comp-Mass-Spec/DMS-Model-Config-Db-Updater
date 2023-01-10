@@ -2408,6 +2408,7 @@ namespace DMSModelConfigDbUpdater
                     // Do not change the text
                     return;
 
+                case "column_tooltip":
                 case "doi_link":
                 case "format_date":
                 case "image_link":
