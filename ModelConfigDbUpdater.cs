@@ -2038,8 +2038,10 @@ namespace DMSModelConfigDbUpdater
 
         private string UpdateColumnName(string currentColumnName, bool snakeCaseName)
         {
+            // When replacing spaces with underscores, also remove any periods or parentheses
+
             var columnNameToExamine = Options.ReplaceSpacesWithUnderscores
-                ? currentColumnName.Replace(' ', '_')
+                ? currentColumnName.Replace(' ', '_').Replace(".", "").Replace("(", "").Replace(")", "")
                 : currentColumnName;
 
             string columnNameCandidate;
