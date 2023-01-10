@@ -2036,7 +2036,7 @@ namespace DMSModelConfigDbUpdater
             return false;
         }
 
-        private string UpdateColumnName(string currentColumnName, bool snakeCaseName)
+        private string UpdateColumnName(string currentColumnName, bool snakeCaseName = true)
         {
             // When replacing spaces with underscores, also remove any periods or parentheses
 
@@ -2227,15 +2227,45 @@ namespace DMSModelConfigDbUpdater
 
                 foreach (var externalSource in externalSources)
                 {
-                    if (!FormFieldRenamed(renamedFormFields, externalSource.FieldName, out var newFormFieldName))
-                        continue;
+                    var formFieldRenamed = FormFieldRenamed(renamedFormFields, externalSource.FieldName, out var newFormFieldName);
 
-                    dbCommand.CommandText = string.Format(
-                        "UPDATE external_sources SET field = '{0}' WHERE id = {1}",
-                        newFormFieldName, externalSource.ID);
+                    bool sourceRenamed;
+                    string newSourceName;
 
-                    dbCommand.ExecuteNonQuery();
-                    updatedItems++;
+                    if ((externalSource.SourceType.StartsWith("ColName") || externalSource.SourceType.StartsWith("PostName")) &&
+                        (Options.ChangeColumnNamesToLowerCase || Options.SnakeCaseColumnNames))
+                    {
+                        newSourceName = UpdateColumnName(externalSource.SourceColumn);
+                        sourceRenamed = !newSourceName.Equals(externalSource.SourceColumn);
+                    }
+                    else
+                    {
+                        newSourceName = externalSource.SourceColumn;
+                        sourceRenamed = false;
+                    }
+
+                    if (formFieldRenamed)
+                    {
+                        dbCommand.CommandText = string.Format(
+                            "UPDATE external_sources SET field = '{0}' WHERE id = {1}",
+                            newFormFieldName, externalSource.ID);
+
+                        dbCommand.ExecuteNonQuery();
+                    }
+
+                    if (sourceRenamed)
+                    {
+                        dbCommand.CommandText = string.Format(
+                            "UPDATE external_sources SET value = '{0}' WHERE id = {1}",
+                            newSourceName, externalSource.ID);
+
+                        dbCommand.ExecuteNonQuery();
+                    }
+
+                    if (formFieldRenamed || sourceRenamed)
+                    {
+                        updatedItems++;
+                    }
                 }
 
                 OnStatusEvent(
