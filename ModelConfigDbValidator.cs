@@ -1128,6 +1128,11 @@ namespace DMSModelConfigDbUpdater
                     continue;
                 }
 
+                // Example messages:
+                //   List report hotlink id was not found in source view
+                //   Detail report hotlink wellplate_name was not found in source
+                //   List report hotlink id was not found in source stored procedure
+
                 OnWarningEvent(
                     "{0,-25} {1} hotlink {2} was not found in source {3}",
                     mDbUpdater.CurrentConfigDB + ":",
