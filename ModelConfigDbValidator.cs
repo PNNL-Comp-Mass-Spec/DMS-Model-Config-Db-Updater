@@ -94,13 +94,20 @@ namespace DMSModelConfigDbUpdater
                 }));
 
             mMissingColumnsToIgnore.Add(
+                "data_package_dataset_job_coverage",
+                GetMissingColumnDictionary("GetPackageDatasetJobToolCrosstab", new List<string>
+                {
+                    "id"
+                }));
+
+            mMissingColumnsToIgnore.Add(
                 "experiment_fraction",
                 GetMissingColumnDictionary("v_experiment_fractions_entry", new List<string>
                 {
                     "suffix",
                     "name_search",
                     "name_replace",
-                    "tab",
+                    "group_name",
                     "add_underscore_before_fraction_num",
                     "request_override",
                     "internal_standard",
@@ -110,6 +117,13 @@ namespace DMSModelConfigDbUpdater
                     "wellplate",
                     "well",
                     "prep_lc_run_id"
+                }));
+
+            mMissingColumnsToIgnore.Add(
+                "mrm_list_attachment",
+                GetMissingColumnDictionary("v_mrm_list_attachment_list_report", new List<string>
+                {
+                    "download"
                 }));
 
             mMissingColumnsToIgnore.Add(
@@ -1084,21 +1098,11 @@ namespace DMSModelConfigDbUpdater
                 if (validColumn || mismatchedCase)
                     continue;
 
-                if (columnName.Equals("Sel."))
+                if (columnName.Equals("Sel"))
                 {
                     if (mDbUpdater.CurrentConfigDB.Equals("analysis_job_processor_group_association.db") ||
                         mDbUpdater.CurrentConfigDB.Equals("analysis_job_processor_group_membership.db") ||
-                        mDbUpdater.CurrentConfigDB.Equals("z"))
-                    {
-                        continue;
-                    }
-
-                    Console.WriteLine("Possibly ignore the 'Sel.' column in " + mDbUpdater.CurrentConfigDB);
-                }
-
-                if (columnName.Equals("Sel"))
-                {
-                    if (mDbUpdater.CurrentConfigDB.Equals("eus_users.db") ||
+                        mDbUpdater.CurrentConfigDB.Equals("eus_users.db") ||
                         mDbUpdater.CurrentConfigDB.StartsWith("helper_") ||
                         mDbUpdater.CurrentConfigDB.Equals("lc_cart_request_loading.db") ||
                         mDbUpdater.CurrentConfigDB.Equals("material_move_items.db") ||
@@ -1109,7 +1113,7 @@ namespace DMSModelConfigDbUpdater
                         continue;
                     }
 
-                    Console.WriteLine("Possibly ignore the 'Sel.' column in " + mDbUpdater.CurrentConfigDB);
+                    Console.WriteLine("Possibly ignore the 'Sel' column in " + mDbUpdater.CurrentConfigDB);
                 }
 
                 if (columnName.Equals("@exclude"))
