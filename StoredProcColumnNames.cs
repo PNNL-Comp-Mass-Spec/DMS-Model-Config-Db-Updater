@@ -37,8 +37,8 @@ namespace DMSModelConfigDbUpdater
                 },
                 "GetPackageDatasetJobToolCrosstab" => new List<string>
                 {
-                    "Dataset",
-                    "Jobs",
+                    "dataset",
+                    "jobs",
                     "id"
                 },
                 "FindExistingJobsForRequest" => new List<string>

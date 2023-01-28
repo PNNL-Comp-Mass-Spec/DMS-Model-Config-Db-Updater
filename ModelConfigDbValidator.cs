@@ -86,7 +86,7 @@ namespace DMSModelConfigDbUpdater
         {
             mMissingColumnsToIgnore.Add(
                 "analysis_group",
-                GetMissingColumnDictionary("V_Analysis_Job_Entry", new List<string>
+                GetMissingColumnDictionary("v_analysis_job_entry", new List<string>
                 {
                     "remove_datasets_with_jobs",
                     "data_package_id",
