@@ -1098,7 +1098,7 @@ namespace DMSModelConfigDbUpdater
                 if (validColumn || mismatchedCase)
                     continue;
 
-                if (columnName.Equals("Sel"))
+                if (columnName.Equals("Sel", StringComparison.OrdinalIgnoreCase))
                 {
                     if (mDbUpdater.CurrentConfigDB.Equals("analysis_job_processor_group_association.db") ||
                         mDbUpdater.CurrentConfigDB.Equals("analysis_job_processor_group_membership.db") ||
