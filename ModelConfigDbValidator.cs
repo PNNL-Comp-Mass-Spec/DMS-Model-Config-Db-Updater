@@ -94,13 +94,6 @@ namespace DMSModelConfigDbUpdater
                 }));
 
             mMissingColumnsToIgnore.Add(
-                "data_package_dataset_job_coverage",
-                GetMissingColumnDictionary("GetPackageDatasetJobToolCrosstab", new List<string>
-                {
-                    "id"
-                }));
-
-            mMissingColumnsToIgnore.Add(
                 "experiment_fraction",
                 GetMissingColumnDictionary("v_experiment_fractions_entry", new List<string>
                 {
