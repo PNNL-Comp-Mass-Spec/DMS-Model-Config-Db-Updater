@@ -5,7 +5,7 @@
   Ignoring column missing from v_experiment_fractions_entry since expected: suffix
   Ignoring column missing from v_experiment_fractions_entry since expected: name_search
   Ignoring column missing from v_experiment_fractions_entry since expected: name_replace
-  Ignoring column missing from v_experiment_fractions_entry since expected: tab
+  Ignoring column missing from v_experiment_fractions_entry since expected: group_name
   Ignoring column missing from v_experiment_fractions_entry since expected: add_underscore_before_fraction_num
   Ignoring column missing from v_experiment_fractions_entry since expected: request_override
   Ignoring column missing from v_experiment_fractions_entry since expected: internal_standard
@@ -21,6 +21,8 @@
 Skipping validation of stored procedure arguments for file_attachment.db since this page family does not have form fields
 
 Skipping validation of stored procedure arguments for grid.db since this page family does not have form fields
+
+  Ignoring column missing from v_mrm_list_attachment_list_report since expected: download
 
   Ignoring column missing from v_param_file_entry since expected: replace_mass_mods
   Ignoring column missing from v_param_file_entry since expected: validate_unimod
@@ -52,11 +54,15 @@ Skipping validation of stored procedure arguments for run_op_logs.db since this 
   Ignoring column missing from t_analysis_job since expected: assigned_processor
   Ignoring column missing from t_analysis_job since expected: associated_processor_group
   Ignoring column missing from t_analysis_job since expected: propagation_mode
-  Ignoring column missing from t_analysis_job since expected: parm_file
+  Ignoring column missing from t_analysis_job since expected: param_file
   Ignoring column missing from t_analysis_job since expected: settings_file
   Ignoring column missing from t_analysis_job since expected: organism
   Ignoring column missing from t_analysis_job since expected: prot_coll_name_list
   Ignoring column missing from t_analysis_job since expected: prot_coll_options_list
+
+Page family 'predefined_analysis_jobs_preview' not found in the validation name cache; cannot validate external sources for page family 'analysis_group'
+
+Page family 'predefined_analysis_jobs_preview' not found in the validation name cache; cannot validate external sources for page family 'analysis_job'
 
 Pick list choosers not used by any of the validated model config DBs:
 
@@ -67,7 +73,6 @@ Pick list choosers not used by any of the validated model config DBs:
   captureMultiJobUpdateActionsPickList
   data_package_list
   datasetStatePickList
-  dnaTabIDPickList
   experimentUserPRNPickList
   filterSetPickList
   futureDatePickList
@@ -86,6 +91,7 @@ Pick list choosers not used by any of the validated model config DBs:
   postdigestIntStdPickList
   predefCritNamePickList
   predefCritValuePickList
+  predefinedAnalysisPreviewReportType
   predigestIntStdPickList
   prevDatePickList
   ReqRunInstrumentPicklist
@@ -99,15 +105,15 @@ List report helpers not used by any of the validated model config DBs:
 
   helper_campaign_ckbx
   helper_capture_job_steps
+  helper_cell_culture
   helper_dataset_capture_job_steps_ckbx
   helper_dataset_separation_type_ckbx
   helper_dataset_type_ckbx
   helper_experiment_group_ckbx
   helper_multi_dataset_ckbx
-  helper_newt_id
   helper_osm_package
   helper_prep_lc_run_ckbx
   helper_sample_submissions_ckbx
 
 
-Validated column names in 295 model config DBs; no errors were found
+Validated column names in 290 model config DBs; no errors were found
