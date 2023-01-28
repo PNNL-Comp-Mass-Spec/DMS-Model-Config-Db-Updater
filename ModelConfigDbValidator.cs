@@ -1116,8 +1116,9 @@ namespace DMSModelConfigDbUpdater
                     continue;
                 }
 
-                if (item.FieldName.Equals("Download") && mDbUpdater.CurrentConfigDB.Equals("mrm_list_attachment.db"))
+                if (IgnoreMissingColumn(sourceTableViewOrProcedureName, item.FieldName))
                 {
+                    OnDebugEvent("Ignoring column missing from {0} since expected: {1}", sourceTableViewOrProcedureName, item.FieldName);
                     continue;
                 }
 
