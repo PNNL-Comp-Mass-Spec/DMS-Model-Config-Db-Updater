@@ -8,7 +8,7 @@ namespace DMSModelConfigDbUpdater
     {
         // ReSharper disable CommentTypo
 
-        // Ignore Spelling: Crit, Excl, Labelling, Lvl, Pri, Proc, Prot, Sel, Sep
+        // Ignore Spelling: Crit, Excl, Labelling, Lvl, Pri, Proc, Prot, sel
 
         // ReSharper enable CommentTypo
 
@@ -64,7 +64,7 @@ namespace DMSModelConfigDbUpdater
                     "failed",
                     "holding"
                 },
-                "GetCurrentMangerActivity" => new List<string>
+                "GetCurrentMangerActivity" => new List<string>      // Obsolete stored procedure
                 {
                     "Source",
                     "When",
@@ -298,7 +298,7 @@ namespace DMSModelConfigDbUpdater
                     "status",
                     "request"
                 },
-                "ReportRequestDaily" => new List<string>
+                "ReportRequestDaily" => new List<string>            // Obsolete stored procedure
                 {
                     "Date",
                     "Total entered",

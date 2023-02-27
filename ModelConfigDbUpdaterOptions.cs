@@ -7,12 +7,12 @@ namespace DMSModelConfigDbUpdater
 {
     public class ModelConfigDbUpdaterOptions
     {
-        // Ignore Spelling: dataset, hotlink, Postgres, pre
+        // Ignore Spelling: dataset, hotlink, hotlinks, Postgres, pre
 
         /// <summary>
         /// Program date
         /// </summary>
-        public const string PROGRAM_DATE = "January 27, 2023";
+        public const string PROGRAM_DATE = "February 26, 2023";
 
         [Option("InputDirectory", "Input", "I", ArgPosition = 1, HelpShowsDefault = false, IsInputFilePath = false,
             HelpText = "Directory with the DMS model config database files to update\n" +
