@@ -719,7 +719,11 @@ namespace DMSModelConfigDbUpdater
                         continue;
                     }
 
-                    ValidateFieldNameVsFormFields("Form field chooser XRef", formFieldChooser.CrossReference, ref errorCount);
+                    var crossReference = formFieldChooser.CrossReference.TrimEnd().EndsWith("|required", StringComparison.OrdinalIgnoreCase)
+                        ? formFieldChooser.CrossReference.Replace("|required", string.Empty)
+                        : formFieldChooser.CrossReference;
+
+                    ValidateFieldNameVsFormFields("Form field chooser XRef", crossReference, ref errorCount);
 
                     switch (formFieldChooser.Type)
                     {
