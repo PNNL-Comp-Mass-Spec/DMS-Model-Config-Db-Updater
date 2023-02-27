@@ -2771,9 +2771,10 @@ namespace DMSModelConfigDbUpdater
 
                         if (!ValidationNameCache.DatabaseColumnsByPageFamily.TryGetValue(externalPageFamily, out var externalPageFamilyInfo))
                         {
-                            if (externalPageFamily.Equals("predefined_analysis_preview") ||
+                            if (externalPageFamily.Equals("predefined_analysis_jobs_preview") ||
                                 externalPageFamily.Equals("predefined_analysis_preview_mds"))
                             {
+                                // These page families obtain data from stored procedures, and thus do not have data in ValidationNameCache.DatabaseColumnsByPageFamily
                                 Console.WriteLine();
                                 OnStatusEvent(
                                     "Ignoring missing external source referenced by page family '{0}' since expected: {1}",
