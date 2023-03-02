@@ -12,7 +12,7 @@ namespace DMSModelConfigDbUpdater
         /// <summary>
         /// Program date
         /// </summary>
-        public const string PROGRAM_DATE = "February 26, 2023";
+        public const string PROGRAM_DATE = "March 2, 2023";
 
         [Option("InputDirectory", "Input", "I", ArgPosition = 1, HelpShowsDefault = false, IsInputFilePath = false,
             HelpText = "Directory with the DMS model config database files to update\n" +
@@ -105,7 +105,8 @@ namespace DMSModelConfigDbUpdater
         [Option("ValidateColumnNames", "ValidateColumns", "Validate", HelpShowsDefault = true,
             HelpText = "When true, read column names used in each SQLite file and validate against the column names " +
                        "in the source tables or views for list reports, detail reports, and entry pages\n" +
-                       "When this is true, the name map files are not loaded, and no object renaming is performed")]
+                       "When this is true, the name map files are not loaded, and no object renaming is performed\n" +
+                       "Also validates stored procedure argument names in model config DBs vs. the database")]
         public bool ValidateColumnNamesWithDatabase { get; set; }
 
         [Option("DatabaseServer", "Server", HelpShowsDefault = true,
