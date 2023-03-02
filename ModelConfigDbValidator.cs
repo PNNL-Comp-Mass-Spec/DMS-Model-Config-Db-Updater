@@ -167,6 +167,39 @@ namespace DMSModelConfigDbUpdater
                 }));
         }
 
+
+        private string GetDatabaseName(string databaseName)
+        {
+            if (mOptions.UseDevelopmentDatabases)
+            {
+                return databaseName.ToLower() switch
+                {
+                    "dms_capture" => "DMS_Capture_T3",
+                    "dms_data_package" => "DMS_Data_Package_T3",
+                    "dms_pipeline" => "DMS_Pipeline_T3",
+                    "dms5" => "dms5_t3",
+                    "ontology_lookup" => "Ontology_Lookup",
+                    "manager_control" => "Manager_Control_T3",
+                    "protein_sequences" => "Protein_Sequences_T3",
+                    _ => databaseName
+                };
+            }
+
+            return databaseName;
+        }
+
+        private string GetDatabaseServer()
+        {
+            if (mOptions.DatabaseServer.Equals("gigasax", StringComparison.OrdinalIgnoreCase) &&
+                mGeneralParams.Parameters[GeneralParameters.ParameterType.DatabaseGroup].Equals("manager_control", StringComparison.OrdinalIgnoreCase))
+            {
+                // Auto-change the server since the manager control database is not on Gigasax
+                return "proteinseqs";
+            }
+
+            return mOptions.DatabaseServer;
+        }
+
         private bool GetColumnNamesInTableOrView(string tableOrViewName, out SortedSet<string> columnNames, out string targetDatabase)
         {
             columnNames = new SortedSet<string>();
@@ -305,39 +338,9 @@ namespace DMSModelConfigDbUpdater
                 }
                 else
                 {
-                    string serverToUse;
+                    var serverToUse = GetDatabaseServer();
 
-                    if (mOptions.DatabaseServer.Equals("gigasax", StringComparison.OrdinalIgnoreCase) &&
-                        mGeneralParams.Parameters[GeneralParameters.ParameterType.DatabaseGroup].Equals("manager_control", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Auto-change the server since the manager control database is not on Gigasax
-                        serverToUse = "proteinseqs";
-                    }
-                    else
-                    {
-                        serverToUse = mOptions.DatabaseServer;
-                    }
-
-                    string databaseToUse;
-
-                    if (mOptions.UseDevelopmentDatabases)
-                    {
-                        databaseToUse = databaseName.ToLower() switch
-                        {
-                            "dms_capture" => "DMS_Capture_T3",
-                            "dms_data_package" => "DMS_Data_Package_T3",
-                            "dms_pipeline" => "DMS_Pipeline_T3",
-                            "dms5" => "dms5_t3",
-                            "ontology_lookup" => "Ontology_Lookup",
-                            "manager_control" => "Manager_Control_T3",
-                            "protein_sequences" => "Protein_Sequences_T3",
-                            _ => databaseName
-                        };
-                    }
-                    else
-                    {
-                        databaseToUse = databaseName;
-                    }
+                    var databaseToUse = GetDatabaseName(databaseName);
 
                     // SQL Server
                     var connectionString = DbToolsFactory.GetConnectionString(
