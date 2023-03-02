@@ -637,6 +637,7 @@ namespace DMSModelConfigDbUpdater
 
                 if (mOptions.UsePostgresSchema)
                 {
+                    // Note that this connection string includes the username: d3l243
                     var connectionString = DbToolsFactory.GetConnectionString(
                         DbServerTypes.PostgreSQL, mOptions.DatabaseServer, databaseName,
                         "d3l243", string.Empty, "ModelConfigDbValidator");
@@ -659,11 +660,11 @@ namespace DMSModelConfigDbUpdater
                 // Note that Information_Schema.Columns includes the column names for both the tables and views in a database
                 // Postgres includes the information_schema objects in the list, plus also pg_catalog objects, so we exclude them in the query
 
-                var sqlQuery = string.Format(
+                const string sqlQuery =
                     "SELECT table_schema, table_name, column_name " +
                     "FROM Information_Schema.Columns " +
                     "WHERE table_schema Not In ('information_schema', 'pg_catalog') " +
-                    "ORDER BY table_schema, table_name, column_name");
+                    "ORDER BY table_schema, table_name, column_name";
 
                 var cmd = dbTools.CreateCommand(sqlQuery);
 
