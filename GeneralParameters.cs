@@ -6,6 +6,16 @@ namespace DMSModelConfigDbUpdater
     internal class GeneralParameters
     {
         /// <summary>
+        /// Stored procedure argument direction
+        /// </summary>
+        public enum ArgumentDirection
+        {
+            In = 0,
+            Out = 1,
+            InOut = 2
+        }
+
+        /// <summary>
         /// General parameter types
         /// </summary>
         public enum ParameterType

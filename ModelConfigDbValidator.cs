@@ -31,6 +31,12 @@ namespace DMSModelConfigDbUpdater
         private readonly Dictionary<string, DatabaseColumnInfo> mDatabaseColumns;
 
         /// <summary>
+        /// Keys in this dictionary are database names
+        /// Values are an instance of DatabaseFunctionAndProcedureInfo
+        /// </summary>
+        private readonly Dictionary<string, DatabaseFunctionAndProcedureInfo> mDatabaseFunctionAndProcedureArguments;
+
+        /// <summary>
         /// Model Config DB Updater instance
         /// </summary>
         private readonly ModelConfigDbUpdater mDbUpdater;
@@ -70,6 +76,7 @@ namespace DMSModelConfigDbUpdater
         public ModelConfigDbValidator(ModelConfigDbUpdater dbUpdater, GeneralParameters generalParams, List<FormFieldInfo> formFields)
         {
             mDatabaseColumns = new Dictionary<string, DatabaseColumnInfo>(StringComparer.OrdinalIgnoreCase);
+            mDatabaseFunctionAndProcedureArguments = new Dictionary<string, DatabaseFunctionAndProcedureInfo>(StringComparer.OrdinalIgnoreCase);
             mDbUpdater = dbUpdater;
             mFormFields = formFields;
             mGeneralParams = generalParams;
@@ -167,6 +174,215 @@ namespace DMSModelConfigDbUpdater
                 }));
         }
 
+        /// <summary>
+        /// Extract the function or procedure argument names from argumentList
+        /// </summary>
+        /// <param name="currentObject">Function or procedure name, with schema</param>
+        /// <param name="argumentList">Comma separated list of argument names for a Postgres function or procedure</param>
+        /// <param name="ordinalPositionByName">Dictionary where keys are argument names and values are ordinal position (1-based)</param>
+        /// <param name="dataTypeByOrdinalPosition">Dictionary where keys are ordinal position (1-based) and values are data type</param>
+        private void DetermineArgumentOrdinalPositions(
+            string currentObject,
+            string argumentList,
+            IDictionary<string, int> ordinalPositionByName,
+            IDictionary<int, string> dataTypeByOrdinalPosition)
+        {
+            ordinalPositionByName.Clear();
+            dataTypeByOrdinalPosition.Clear();
+
+            var columnNumber = 0;
+
+            // Split on commas
+            foreach (var argumentInfo in argumentList.Split(','))
+            {
+                columnNumber++;
+
+                GetArgumentNameTypeAndDirection(argumentInfo, out var argumentName, out var dataType, out _);
+
+                if (!string.IsNullOrWhiteSpace(argumentName))
+                {
+                    if (ordinalPositionByName.ContainsKey(argumentName))
+                    {
+                        OnWarningEvent("Ignoring duplicate argument '{0}' for procedure or function {1}", argumentName, currentObject);
+                    }
+                    else
+                    {
+                        ordinalPositionByName.Add(argumentName, columnNumber);
+                    }
+                }
+
+                dataTypeByOrdinalPosition.Add(columnNumber, dataType);
+            }
+        }
+
+        private void GetArgumentNameTypeAndDirection(string argumentInfo, out string argumentName, out string dataType, out GeneralParameters.ArgumentDirection direction)
+        {
+            // Trim leading spaces
+            var trimmedArgumentInfo = argumentInfo.TrimStart();
+
+            // Look for the argument direction (IN, OUT, or INOUT)
+            string nameAndType;
+
+            if (trimmedArgumentInfo.StartsWith("INOUT"))
+            {
+                direction = GeneralParameters.ArgumentDirection.InOut;
+                nameAndType = trimmedArgumentInfo.Substring(5).Trim();
+            }
+            else if (trimmedArgumentInfo.StartsWith("IN"))
+            {
+                direction = GeneralParameters.ArgumentDirection.In;
+                nameAndType = trimmedArgumentInfo.Substring(2).Trim();
+            }
+            else if (trimmedArgumentInfo.StartsWith("OUT"))
+            {
+                direction = GeneralParameters.ArgumentDirection.Out;
+                nameAndType = trimmedArgumentInfo.Substring(3).Trim();
+            }
+            else
+            {
+                direction = GeneralParameters.ArgumentDirection.In;
+                nameAndType = trimmedArgumentInfo.Trim();
+            }
+
+            // Look for data type
+            var spaceIndex = nameAndType.IndexOf(' ');
+
+            if (spaceIndex > 0  && !nameAndType.Equals("double precision"))
+            {
+                argumentName = nameAndType.Substring(0, spaceIndex);
+                dataType = spaceIndex < nameAndType.Length - 1 ? nameAndType.Substring(spaceIndex + 1) : string.Empty;
+            }
+            else
+            {
+                // Most likely nameAndType only has the data type of the parameter
+                // This is often the case with system functions
+                if (nameAndType.Equals("bigint") ||
+                    nameAndType.Equals("boolean") ||
+                    nameAndType.Equals("bytea") ||
+                    nameAndType.Equals("character") ||
+                    nameAndType.Equals("citext") ||
+                    nameAndType.Equals("cstring") ||
+                    nameAndType.Equals("double precision") ||
+                    nameAndType.Equals("inet") ||
+                    nameAndType.Equals("integer") ||
+                    nameAndType.Equals("internal") ||
+                    nameAndType.Equals("oid") ||
+                    nameAndType.Equals("text") ||
+                    nameAndType.Equals("text[]"))
+                {
+                    argumentName = string.Empty;
+                }
+                else
+                {
+                    argumentName = nameAndType;
+                }
+
+                dataType = nameAndType;
+            }
+        }
+
+        /// <summary>
+        /// Parse the query results to determine the function or stored procedure argument name, type, and direction
+        /// </summary>
+        /// <param name="currentObject">Function or procedure name, with schema</param>
+        /// <param name="result">Query result row</param>
+        /// <param name="isPostgres">True if parsing PostgreSQL query results</param>
+        /// <param name="isProcedure">True if parsing PostgreSQL query results</param>
+        /// <param name="ordinalPositionByName">Dictionary where keys are argument names and values are ordinal position (only used with Postgres)</param>
+        /// <param name="dataTypeByOrdinalPosition">Dictionary where keys are ordinal position (1-based) and values are data type</param>
+        /// <returns>Instance of FunctionOrProcedureArgumentInfo</returns>
+        private FunctionOrProcedureArgumentInfo GetArgumentInfo(
+            string currentObject,
+            DataRow result,
+            bool isPostgres,
+            bool isProcedure,
+            IReadOnlyDictionary<string, int> ordinalPositionByName,
+            IDictionary<int, string> dataTypeByOrdinalPosition)
+        {
+            // Postgres columns:
+            // argument_info: Argument direction (optional), name (optional), and type
+
+            // SQL Server columns:
+            // parameter_id: Ordinal Position (0 if a return value, -1 if unknown)
+            // parameter_name: Argument name
+            // parameter_data_type: Argument data type
+            // parameter_max_length: Max length (e.g., for varchar)
+            // is_output_parameter: 1 if an output parameter, otherwise 0
+
+            int ordinalPosition;
+            string argumentName;
+            string dataType;
+            GeneralParameters.ArgumentDirection argumentDirection;
+
+            if (isPostgres)
+            {
+                var argumentInfo = result["argument_info"].CastDBVal<string>();
+
+                // Parse parameterInfo to determine the argument name, type, and direction
+                // Example values:
+                //   IN _name text
+                //   IN _infoOnly boolean
+                //   INOUT _message text
+                //   OUT level bigint
+                //   _filename citext
+                //   _value double precision
+                //   bytea
+                //   text
+
+                GetArgumentNameTypeAndDirection(argumentInfo, out argumentName, out dataType, out argumentDirection);
+
+                if (ordinalPositionByName.TryGetValue(argumentName, out var position))
+                {
+                    ordinalPosition = position;
+
+                    if (dataTypeByOrdinalPosition.TryGetValue(ordinalPosition, out var dataTypeFromParameterList) &&
+                        !dataType.Equals(dataTypeFromParameterList))
+                    {
+                        if (dataType.Equals("timestamp with time zone") && dataTypeFromParameterList.Equals("timestamp without time zone") ||
+                            dataType.Equals("timestamp without time zone") && dataTypeFromParameterList.Equals("timestamp with time zone") ||
+                            dataType.Equals("numeric") && dataTypeFromParameterList.Equals("double precision") ||
+                            dataType.Equals("text") && dataTypeFromParameterList.Equals("regclass") ||
+                            dataType.Equals("regclass") && dataTypeFromParameterList.Equals("text"))
+                        {
+                            // These differences can be ignored
+                        }
+                        else
+                        {
+                            OnWarningEvent("Data type mismatch for argument {0} in procedure or function {1}: {2} vs. {3}",
+                                argumentName, currentObject, dataType, dataTypeFromParameterList);
+                        }
+                    }
+                }
+                else
+                {
+                    ordinalPosition = -1;
+                }
+            }
+            else
+            {
+                ordinalPosition = result["parameter_id"].CastDBVal<int>();
+                argumentName = result["parameter_name"].CastDBVal<string>();
+                dataType = result["parameter_data_type"].CastDBVal<string>();
+                var outputParameterFlag = result["is_output_parameter"].CastDBVal<int>();
+
+                if (outputParameterFlag > 0)
+                {
+                    argumentDirection = GeneralParameters.ArgumentDirection.InOut;
+                }
+                else
+                {
+                    argumentDirection = GeneralParameters.ArgumentDirection.In;
+                }
+
+                // Unused:
+                // var maxLength = result["parameter_max_length"].CastDBVal<int>();
+
+            }
+
+            var argumentNameToStore = RemoveArgumentPrefix(currentObject, argumentName, isPostgres, isProcedure);
+
+            return new FunctionOrProcedureArgumentInfo(ordinalPosition, argumentNameToStore, dataType, argumentDirection);
+        }
 
         private string GetDatabaseName(string databaseName)
         {
@@ -198,6 +414,52 @@ namespace DMSModelConfigDbUpdater
             }
 
             return mOptions.DatabaseServer;
+        }
+
+        private bool GetFunctionOrProcedureInfo(string functionOrProcedureName, out FunctionOrProcedureInfo objectInfo, out string targetDatabase)
+        {
+            var undefinedObjectInfo = new FunctionOrProcedureInfo(string.Empty, string.Empty, false);
+            targetDatabase = GetTargetDatabase();
+
+            try
+            {
+                if (!mDatabaseFunctionAndProcedureArguments.ContainsKey(targetDatabase))
+                {
+                    var success = RetrieveDatabaseFunctionAndProcedureInfo(targetDatabase);
+
+                    if (!success)
+                    {
+                        objectInfo = undefinedObjectInfo;
+                        return false;
+                    }
+                }
+
+                string schemaNameToFind;
+                string nameWithoutSchema;
+
+                if (functionOrProcedureName.Contains("."))
+                {
+                    schemaNameToFind = PossiblyUnquote(ModelConfigDbUpdater.GetSchemaName(functionOrProcedureName));
+                    nameWithoutSchema = PossiblyUnquote(ModelConfigDbUpdater.GetNameWithoutSchema(functionOrProcedureName));
+                }
+                else
+                {
+                    schemaNameToFind = mOptions.UsePostgresSchema ? "public" : "dbo";
+                    nameWithoutSchema = PossiblyUnquote(functionOrProcedureName);
+                }
+
+                var functionAndProcedureInfo = mDatabaseFunctionAndProcedureArguments[targetDatabase];
+
+                objectInfo = functionAndProcedureInfo.GetArgumentListForFunctionOrProcedure(schemaNameToFind, nameWithoutSchema);
+
+                return objectInfo.ArgumentList.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in GetFunctionOrProcedureInfo", ex);
+                objectInfo = undefinedObjectInfo;
+                return false;
+            }
         }
 
         private bool GetColumnNamesInTableOrView(string tableOrViewName, out SortedSet<string> columnNames, out string targetDatabase)
@@ -318,6 +580,45 @@ namespace DMSModelConfigDbUpdater
         }
 
         /// <summary>
+        /// For SQL Server arguments, remove @ from the start of the argument name
+        /// For PostgreSQL arguments, remove _ from the start of the argument name
+        /// </summary>
+        /// <remarks>SQL Server arguments with ordinal position 0 will be named 'Returns'</remarks>
+        /// <param name="currentObject">Function or procedure name, with schema</param>
+        /// <param name="argumentName"></param>
+        /// <param name="isPostgres"></param>
+        /// <param name="isProcedure"></param>
+        /// <returns>Updated argument name</returns>
+        private string RemoveArgumentPrefix(string currentObject, string argumentName, bool isPostgres, bool isProcedure)
+        {
+            var prefix = isPostgres ? "_" : "@";
+
+            if (argumentName.StartsWith(prefix))
+            {
+                return argumentName.Substring(1);
+            }
+
+            if (isPostgres)
+            {
+                if (argumentName.Length == 0)
+                    return string.Empty;
+
+                // Procedure argument names should start with an underscore; function argument names often do not start with an underscore
+                if (!isProcedure)
+                    return argumentName;
+            }
+            else if (argumentName.Equals("Returns", StringComparison.OrdinalIgnoreCase))
+            {
+                return argumentName;
+            }
+
+            OnWarningEvent("Argument {0} in procedure or function {1} does not start with '{2}'",
+                argumentName, currentObject, prefix);
+
+            return argumentName;
+        }
+
+        /// <summary>
         /// Query the Information_Schema view to obtain the columns for all tables or views in the target database
         /// </summary>
         /// <param name="databaseName"></param>
@@ -387,6 +688,197 @@ namespace DMSModelConfigDbUpdater
                     }
 
                     currentColumns.Add(columnName);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OnErrorEvent("Error in RetrieveDatabaseColumnInfo", ex);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Query system tables to obtain the argument list for all functions and procedures in the target database
+        /// </summary>
+        /// <param name="databaseName"></param>
+        /// <returns>True if successful, false if an error</returns>
+        private bool RetrieveDatabaseFunctionAndProcedureInfo(string databaseName)
+        {
+            try
+            {
+                IDBTools dbTools;
+
+                if (mOptions.UsePostgresSchema)
+                {
+                    // Note that this connection string includes the username: d3l243
+                    var connectionString = DbToolsFactory.GetConnectionString(
+                        DbServerTypes.PostgreSQL, mOptions.DatabaseServer, databaseName,
+                        "d3l243", string.Empty, "ModelConfigDbValidator");
+
+                    dbTools = DbToolsFactory.GetDBTools(DbServerTypes.PostgreSQL, connectionString);
+                }
+                else
+                {
+                    var serverToUse = GetDatabaseServer();
+
+                    var databaseToUse = GetDatabaseName(databaseName);
+
+                    // SQL Server
+                    var connectionString = DbToolsFactory.GetConnectionString(
+                        DbServerTypes.MSSQLServer, serverToUse, databaseToUse, "ModelConfigDbValidator");
+
+                    dbTools = DbToolsFactory.GetDBTools(DbServerTypes.MSSQLServer, connectionString);
+                }
+
+                // Note that Information_Schema.Columns includes the column names for both the tables and views in a database
+                // Postgres includes the information_schema objects in the list, plus also pg_catalog objects, so we exclude them in the query
+
+                string sqlQuery;
+
+                // ReSharper disable StringLiteralTypo
+                // ReSharper disable CommentTypo
+
+                if (mOptions.UsePostgresSchema)
+                {
+                    sqlQuery =
+                        "SELECT pronamespace::regnamespace::text as object_schema," +
+                        "       proname as object_name," +
+                        "       prokind as object_type," +                          // p for procedure, f for function
+                        "       proretset as returns_table," +
+                        "       pg_get_function_identity_arguments(oid) AS argument_list," +                                        // Comma separated list of arguments
+                        "       trim(UNNEST(string_to_array(pg_get_function_identity_arguments(oid), ',' ))) AS argument_info," +   // argument direction (optional), name, and type
+                        "       oid " +
+                        // "       proallargtypes as argument_types," +
+                        // "       proargnames as argument_names," +
+                        // "       proargmodes as argument_modes," +
+                        // "       pg_get_function_arguments(oid) AS args_def " +   // full definition of arguments with defaults
+                        "FROM pg_proc " +
+                        "WHERE NOT pronamespace::regnamespace in ('pg_catalog'::regnamespace, 'information_schema'::regnamespace) " +
+                        "ORDER BY pronamespace::regnamespace, proname";
+                }
+                else
+                {
+                    sqlQuery =
+                        "SELECT SCHEMA_NAME(SCHEMA_ID) AS object_schema," +
+                        "       SO.name AS object_name," +
+                        "       SO.Type_Desc AS object_type," +                     // CLR_STORED_PROCEDURE, SQL_TABLE_VALUED_FUNCTION, SQL_STORED_PROCEDURE, SQL_SCALAR_FUNCTION
+                        "       P.parameter_id AS parameter_id," +                  // Ordinal position of the parameter
+                        "       Case When P.parameter_id = 0 Then 'Returns' Else P.name End AS parameter_name," +
+                        "       TYPE_NAME(P.user_type_id) AS parameter_data_type," +
+                        "       P.max_length AS parameter_max_length," +
+                        "       P.is_output AS is_output_parameter " +
+                        "FROM sys.objects AS SO " +
+                        "     INNER JOIN sys.parameters AS P " +
+                        "       ON SO.OBJECT_ID = P.OBJECT_ID " +
+                        "ORDER BY SCHEMA_NAME(SCHEMA_ID), SO.name, P.parameter_id";
+                }
+
+                // ReSharper restore CommentTypo
+                // ReSharper restore StringLiteralTypo
+
+                var cmd = dbTools.CreateCommand(sqlQuery);
+
+                dbTools.GetQueryResultsDataTable(cmd, out var queryResults);
+
+                var functionAndProcedureInfo = new DatabaseFunctionAndProcedureInfo(databaseName);
+                RegisterEvents(functionAndProcedureInfo);
+
+                mDatabaseFunctionAndProcedureArguments.Add(databaseName, functionAndProcedureInfo);
+
+                var currentSchema = string.Empty;
+                var currentObject = string.Empty;
+                var currentObjectWithSchema = string.Empty;
+                var currentObjectInfo = new FunctionOrProcedureInfo(string.Empty, string.Empty, false);
+
+                // Keys in this dictionary are argument names, values are ordinal position (1-based)
+                // This dictionary is only used with Postgres
+                var ordinalPositionByName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+                // Keys in this dictionary are ordinal position (1-based), values are data type
+                // This dictionary is only used with Postgres
+                var dataTypeByOrdinalPosition = new Dictionary<int, string>();
+
+                foreach (DataRow result in queryResults.Rows)
+                {
+                    var schema = result["object_schema"].CastDBVal<string>() ?? string.Empty;
+                    var objectName = result["object_name"].CastDBVal<string>() ?? string.Empty;
+                    var objectType = result["object_type"].CastDBVal<string>() ?? string.Empty;
+
+                    if (!currentSchema.Equals(schema) || !currentObject.Equals(objectName))
+                    {
+                        currentSchema = schema;
+                        currentObject = objectName;
+
+                        if (string.IsNullOrWhiteSpace(currentSchema))
+                        {
+                            currentObjectWithSchema = objectName;
+                        }
+                        else
+                        {
+                            currentObjectWithSchema = string.Format("{0}.{1}", currentSchema, objectName);
+                        }
+
+                        string objectTypeName;
+
+                        switch (objectType.ToUpper())
+                        {
+                            case "F":
+                                if (mOptions.UsePostgresSchema)
+                                {
+                                    var returnsTable = result["returns_table"].CastDBVal<bool>();
+
+                                    objectTypeName = returnsTable ? "function (table-valued)" : "function (scalar)";
+                                }
+                                else
+                                {
+                                    objectTypeName = "function (??)";
+                                }
+
+                                break;
+
+                            case "SQL_TABLE_VALUED_FUNCTION":
+                                objectTypeName = "function (table-valued)";
+                                break;
+
+                            case "SQL_SCALAR_FUNCTION":
+                                objectTypeName = "function (scalar)";
+                                break;
+
+                            case "P":
+                            case "CLR_STORED_PROCEDURE":
+                            case "SQL_STORED_PROCEDURE":
+                                objectTypeName = "procedure";
+                                break;
+
+                            default:
+                                objectTypeName = "unknown object type";
+                                break;
+                        }
+
+                        var isProcedure = objectTypeName.EndsWith("procedure");
+
+                        currentObjectInfo = new FunctionOrProcedureInfo(objectName, objectTypeName, isProcedure);
+
+                        functionAndProcedureInfo.AddFunctionOrProcedure(schema, objectName, currentObjectInfo);
+
+                        if (mOptions.UsePostgresSchema)
+                        {
+                            var argumentList = result["argument_list"].CastDBVal<string>();
+                            DetermineArgumentOrdinalPositions(currentObjectWithSchema, argumentList, ordinalPositionByName, dataTypeByOrdinalPosition);
+                        }
+                    }
+
+                    var argumentInfo = GetArgumentInfo(
+                        currentObjectWithSchema,
+                        result,
+                        mOptions.UsePostgresSchema,
+                        currentObjectInfo.IsProcedure,
+                        ordinalPositionByName,
+                        dataTypeByOrdinalPosition);
+
+                    currentObjectInfo.ArgumentList.Add(argumentInfo);
                 }
 
                 return true;

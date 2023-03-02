@@ -56,9 +56,12 @@
     <Compile Include="ColumnNameInfo.cs" />
     <Compile Include="BasicField.cs" />
     <Compile Include="DatabaseColumnInfo.cs" />
+    <Compile Include="DatabaseFunctionAndProcedureInfo.cs" />
     <Compile Include="ExternalSourceInfo.cs" />
     <Compile Include="FormFieldChooserInfo.cs" />
     <Compile Include="FormFieldInfo.cs" />
+    <Compile Include="FunctionOrProcedureArgumentInfo.cs" />
+    <Compile Include="FunctionOrProcedureInfo.cs" />
     <Compile Include="GeneralParameters.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="HotLinkInfo.cs" />
