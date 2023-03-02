@@ -117,9 +117,17 @@ namespace DMSModelConfigDbUpdater
             HelpText = "When true, use the development databases instead of the production databases (only applicable for SQL Server)")]
         public bool UseDevelopmentDatabases { get; set; }
 
+        [Option("RequireMatchingCaseForProcedureArgumentNames", "RequireMatchingArgNameCase", HelpShowsDefault = true,
+            HelpText = "When true, require that stored procedure argument names have matching case in model config DBs vs. the database")]
+        public bool RequireMatchingCaseForProcedureArgumentNames { get; set; }
+
         [Option("ValidateColumnNamesIgnoreErrors", "ValidateIgnoreErrors", HelpShowsDefault = true,
             HelpText = "When true, ignore errors while validating model config DBs (errors will be reported, but all config DBs will be validated)")]
         public bool ValidateColumnNamesIgnoreErrors { get; set; }
+
+        [Option("IgnoreMissingStoredProcedures", HelpShowsDefault = true,
+            HelpText = "When true, ignore missing stored procedures")]
+        public bool IgnoreMissingStoredProcedures { get; set; }
 
         [Option("SaveValidationResults", "SaveValidation", "WriteResults", HelpShowsDefault = true,
             HelpText = "When true, save the validation results to a text file")]
@@ -170,24 +178,28 @@ namespace DMSModelConfigDbUpdater
 
             if (ValidateColumnNamesWithDatabase)
             {
-                Console.WriteLine(" {0,-32} {1}", "Validate Column Names With DB:", ValidateColumnNamesWithDatabase);
+                Console.WriteLine(" {0,-40} {1}", "Validate Column Names With DB:", ValidateColumnNamesWithDatabase);
 
-                Console.WriteLine(" {0,-32} {1}", "Database Server:", DatabaseServer);
+                Console.WriteLine(" {0,-40} {1}", "Database Server:", DatabaseServer);
 
                 if (!UsePostgresSchema)
                 {
-                    Console.WriteLine(" {0,-32} {1}", "Use Development DBs:", UseDevelopmentDatabases);
+                    Console.WriteLine(" {0,-40} {1}", "Use Development DBs:", UseDevelopmentDatabases);
                 }
 
-                Console.WriteLine(" {0,-32} {1}", "Continue Validating If Errors:", ValidateColumnNamesIgnoreErrors);
+                Console.WriteLine(" {0,-40} {1}", "Require Matching Case For Proc Args:", RequireMatchingCaseForProcedureArgumentNames);
 
-                Console.WriteLine(" {0,-32} {1}", "Save Validation Results:", SaveValidateResultsToFile);
+                Console.WriteLine(" {0,-40} {1}", "Ignore Missing Stored Procedures:", IgnoreMissingStoredProcedures);
+
+                Console.WriteLine(" {0,-40} {1}", "Continue Validating If Errors:", ValidateColumnNamesIgnoreErrors);
+
+                Console.WriteLine(" {0,-40} {1}", "Save Validation Results:", SaveValidateResultsToFile);
 
                 if (SaveValidateResultsToFile)
                 {
                     var resultsFile = new FileInfo(ModelConfigDbUpdater.GetValidateResultsFilePath(InputDirectory, ValidateResultsFileName));
 
-                    Console.WriteLine(" {0,-32} {1}", "Validation Results File:", PathUtils.CompactPathString(resultsFile.FullName, 80));
+                    Console.WriteLine(" {0,-40} {1}", "Validation Results File:", PathUtils.CompactPathString(resultsFile.FullName, 80));
                 }
 
                 return;

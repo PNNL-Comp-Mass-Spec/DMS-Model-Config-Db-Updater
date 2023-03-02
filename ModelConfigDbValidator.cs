@@ -1851,6 +1851,7 @@ namespace DMSModelConfigDbUpdater
             try
             {
                 var storedProcedureArgsLoaded = mDbUpdater.ReadStoredProcedureArguments(out var storedProcedureArguments);
+
                 if (!storedProcedureArgsLoaded)
                     return true;
 
@@ -1873,13 +1874,180 @@ namespace DMSModelConfigDbUpdater
                     }
                 }
 
-                // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+                var storedProcedureInfo = new Dictionary<string, FunctionOrProcedureInfo>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var storedProcedureName in (from item in storedProcedureArguments select item.ProcedureName).Distinct())
+                {
+                    var procedureInfoLoaded = GetFunctionOrProcedureInfo(storedProcedureName, out var procedureInfo, out var targetDatabase);
+
+                    if (!procedureInfoLoaded)
+                    {
+                        if (mOptions.IgnoreMissingStoredProcedures)
+                        {
+                            OnStatusEvent(
+                                "{0,-25} stored procedure {1} does not exist in database {2} on server {3}",
+                                mDbUpdater.CurrentConfigDB + ":",
+                                storedProcedureName,
+                                targetDatabase,
+                                GetDatabaseServer());
+                        }
+                        else
+                        {
+
+                            OnWarningEvent(
+                                "{0,-25} stored procedure {1} does not exist in database {2} on server {3}",
+                                mDbUpdater.CurrentConfigDB + ":",
+                                storedProcedureName,
+                                targetDatabase,
+                                GetDatabaseServer());
+
+                            errorCount++;
+                        }
+
+                        continue;
+                    }
+
+                    storedProcedureInfo.Add(storedProcedureName, procedureInfo);
+                }
+
                 foreach (var procedureArgument in storedProcedureArguments)
                 {
-                    if (IsOperationsProcedure(procedureArgument.ProcedureName))
+                    if (!IsOperationsProcedure(procedureArgument.ProcedureName))
+                    {
+                        ValidateBasicField("Stored procedure argument", procedureArgument, ref errorCount, out _);
+                    }
+
+                    if (procedureArgument.ArgumentName != procedureArgument.ArgumentName.Trim())
+                    {
+                        OnWarningEvent(
+                            "{0,-25} argument name has leading or trailing spaces; see '{1}' (ID {2}) for procedure {3}",
+                            mDbUpdater.CurrentConfigDB + ":",
+                            procedureArgument.ArgumentName,
+                            procedureArgument.ID,
+                            procedureArgument.ProcedureName);
+
+                        errorCount++;
+                    }
+
+                    if (!storedProcedureInfo.TryGetValue(procedureArgument.ProcedureName, out var procedureInfo))
+                    {
+                        // Stored procedure is missing; the user has already been warned
+                        continue;
+                    }
+
+                    string argumentName;
+                    bool nameIsQuoted;
+
+                    // Check for quoted argument names
+                    if (procedureArgument.ArgumentName.StartsWith("\"") &&
+                        procedureArgument.ArgumentName.EndsWith("\""))
+                    {
+                        argumentName = procedureArgument.ArgumentName.Substring(1, procedureArgument.ArgumentName.Length - 2);
+                        nameIsQuoted = true;
+                    }
+                    else
+                    {
+                        argumentName = procedureArgument.ArgumentName;
+                        nameIsQuoted = false;
+                    }
+
+                    var matchesDatabaseInfo = false;
+
+                    foreach (var databaseArgument in procedureInfo.ArgumentList)
+                    {
+                        if (!databaseArgument.ArgumentName.Equals(argumentName))
+                            continue;
+
+                        matchesDatabaseInfo = true;
+                        break;
+                    }
+
+                    if (matchesDatabaseInfo)
                         continue;
 
-                    ValidateBasicField("Stored procedure argument", procedureArgument, ref errorCount, out _);
+                    foreach (var databaseArgument in procedureInfo.ArgumentList)
+                    {
+                        if (!databaseArgument.ArgumentName.Equals(argumentName, StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        if (nameIsQuoted)
+                        {
+                            OnWarningEvent(
+                                "{0,-25} case mismatch for {1}; ID {2} has quoted name {3} vs. {4} in the database",
+                                mDbUpdater.CurrentConfigDB + ":",
+                                procedureArgument.ProcedureName,
+                                procedureArgument.ID,
+                                procedureArgument.ArgumentName,
+                                databaseArgument.ArgumentName
+                            );
+
+                            errorCount++;
+                            matchesDatabaseInfo = true;
+                            break;
+                        }
+
+                        // The name is not quoted
+
+                        if (mOptions.UsePostgresSchema || !mOptions.RequireMatchingCaseForProcedureArgumentNames)
+                        {
+                            string ignoreReason;
+                            string databaseArgumentName;
+
+                            // ReSharper disable once ConvertIfStatementToConditionalTernaryExpression
+                            if (mOptions.UsePostgresSchema)
+                            {
+                                // On Postgres, uppercase letters are auto-changed to lowercase
+                                ignoreReason = string.Format("auto-converts to {0}", argumentName.ToLower());
+                                databaseArgumentName = databaseArgument.ArgumentName;
+                            }
+                            else
+                            {
+                                // On SQL Server, case does not matter for unquoted argument names
+                                ignoreReason = "case is ignored on SQL Server";
+                                databaseArgumentName = databaseArgument.ArgumentName.ToLower();
+                            }
+
+                            if (databaseArgumentName.Equals(argumentName.ToLower()))
+                            {
+                                OnDebugEvent(
+                                    "{0,-25} case mismatch for {1}; ID {2} has {3} vs. {4} in the database; not an error since {5}",
+                                    mDbUpdater.CurrentConfigDB + ":",
+                                    procedureArgument.ProcedureName,
+                                    procedureArgument.ID,
+                                    procedureArgument.ArgumentName,
+                                    databaseArgumentName,
+                                    ignoreReason
+                                );
+                                matchesDatabaseInfo = true;
+                                break;
+                            }
+                        }
+
+                        OnWarningEvent(
+                            "{0,-25} case mismatch for {1}; ID {2} has {3} vs. {4} in the database",
+                            mDbUpdater.CurrentConfigDB + ":",
+                            procedureArgument.ProcedureName,
+                            procedureArgument.ID,
+                            procedureArgument.ArgumentName,
+                            databaseArgument.ArgumentName
+                        );
+
+                        errorCount++;
+                        matchesDatabaseInfo = true;
+                        break;
+                    }
+
+                    if (matchesDatabaseInfo)
+                        continue;
+
+                    OnWarningEvent(
+                        "{0,-25} stored procedure {1} does not have argument {2} (see ID {3})",
+                        mDbUpdater.CurrentConfigDB + ":",
+                        procedureArgument.ProcedureName,
+                        procedureArgument.ArgumentName,
+                        procedureArgument.ID);
+
+                    errorCount++;
                 }
 
                 return true;
