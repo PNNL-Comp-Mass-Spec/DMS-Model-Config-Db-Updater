@@ -4,6 +4,9 @@ using PRISM;
 
 namespace DMSModelConfigDbUpdater
 {
+    /// <summary>
+    /// This class tracks the column names in database tables and views
+    /// </summary>
     internal class DatabaseColumnInfo : EventNotifier
     {
         /// <summary>

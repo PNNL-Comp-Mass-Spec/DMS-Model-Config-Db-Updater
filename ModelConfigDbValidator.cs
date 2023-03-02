@@ -11,8 +11,14 @@ namespace DMSModelConfigDbUpdater
 {
     internal class ModelConfigDbValidator : EventNotifier
     {
-        // Ignore Spelling: citext, dbo, dms, gigasax, hotlink, hotlinks, Levenshtein, lr
-        // Ignore Spelling: Postgres, proteinseqs, Proc, Sel, wellplate
+        // Ignore Spelling: bigint, bytea, citext, cstring, dbo, dms, gigasax, hotlink, hotlinks
+        // Ignore Spelling: inet, Levenshtein, lr, Postgres, Proc, proteinseqs, Sel, varchar, wellplate
+
+        // ReSharper disable CommentTypo
+
+        // Ignore Spelling: pronamespace, proname, prokind, proretset, oid, regnamespace, proallargtypes, proargnames, proargmodes
+
+        // ReSharper restore CommentTypo
 
         /// <summary>
         /// This RegEx matches form field choosers that reference an ad hoc query

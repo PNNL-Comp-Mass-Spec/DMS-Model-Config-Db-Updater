@@ -1495,6 +1495,11 @@ namespace DMSModelConfigDbUpdater
             return primaryFilters;
         }
 
+        /// <summary>
+        /// Load the stored procedure argument names, as defined in the model config DB
+        /// </summary>
+        /// <param name="storedProcedureArguments"></param>
+        /// <returns>True if successful, false if an error</returns>
         internal bool ReadStoredProcedureArguments(out List<StoredProcArgumentInfo> storedProcedureArguments)
         {
             storedProcedureArguments = new List<StoredProcArgumentInfo>();
@@ -2092,6 +2097,11 @@ namespace DMSModelConfigDbUpdater
             UpdateListOfDataColumns(generalParams, GeneralParameters.ParameterType.EntryPageDataColumns, GeneralParameters.ParameterType.EntryPageView, true);
         }
 
+        /// <summary>
+        /// Update form_fields, form_field_choosers, form_field_options, and external_sources
+        /// </summary>
+        /// <param name="formFields"></param>
+        /// <param name="entryPageView"></param>
         private void UpdateFormFields(List<FormFieldInfo> formFields, string entryPageView)
         {
             try
