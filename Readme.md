@@ -20,9 +20,12 @@ DMSModelConfigDbUpdater.exe
   [/Preview] [/Q]
   [/RenameList] [/RenameDetail] [/RenameEntry] 
   [/RenameSPs] [/RenameUnknownViews]
-  [/ReplaceSpaces] [/SnakeCaseColumns] [/SquareBrackets]
+  [/ReplaceSpaces] [/SnakeCaseColumns] 
+  [/LowercaseColumnNames] [/SquareBrackets]
   [/ConvertHiddenColums] [/UsePgSchema]
-  [/Validate] [/Server] [/ValidateIgnoreErrors]
+  [/Validate] [/Server] [/UseDev] 
+  [/RequireMatchingArgNameCase] [/ValidateIgnoreErrors] 
+  [/IgnoreMissingStoredProcedures]
   [/WriteResults] [/ResultsFile:ValidationResults.txt]
   [/ParamFile:ParamFileName.conf] [/CreateParamFile]
 ```
@@ -98,6 +101,9 @@ Use `/ReplaceSpaces` to enable replacing spaces in column names with underscores
 Use `/SnakeCaseColumns:false` to disable changing unrecognized column names to snake case
 * Column names will be unrecognized if not defined in the View column map file
 
+Use `/LowercaseColumnNames` to change column names to lowercase (if not defined in the View column map file)
+* When enabled, also updates list report and detail report hotlinks
+
 Use `/SquareBrackets` to enable quoting names using square brackets (SQL Server compatible)
 * By default, will quote names using double quotes (if the name contains a space, punctuation, or other non-alphanumeric characters)
 
@@ -106,16 +112,23 @@ Use `/ConvertHiddenColumns` to look for columns that start with `#` and convert 
 
 When `/UsePgSchema` is provided, if the object name does not already have a schema and the database group for the page family is defined (using `my_db_group`),
 preface object names with the PostgreSQL schema that applies to the database group
-* This should only be set to true if the DMS website is now retrieving data from PostgreSQL and schema names need to be added to page families
+* This should only be used if the DMS website is now retrieving data from PostgreSQL and schema names need to be added to page families
 
 Use `/Validate` to read column names used in each SQLite file and validate against the column names in the source tables or views for list reports, detail reports, and entry pages
-* When this is true, the name map files are not loaded and no object renaming is performed
+* When validating names, the name map files are not loaded and no object renaming is performed
+* Also validates stored procedure argument names in model config DBs vs. the database
 
 Use `/Server:ServerName` to define the server name to contact to validate form field names against columns in tables or views
 * Assumed to be SQL Server if `/UsePostgresSchema` is false; otherwise, assumes PostgreSQL
 
+Use `/UseDev` to use the development databases instead of the production databases (only applicable for SQL Server)
+
+Use `/RequireMatchingArgNameCase` to require that stored procedure argument names have matching case in model config DBs vs. the database
+
 When validating column names against the database, if errors are found, by default the program will notify the user of errors, then exit
 * Use `/ValidateIgnoreErrors` to show any errors found, then continue with the next model config DB file
+
+Use `/IgnoreMissingStoredProcedures` to ignore missing stored procedures when validating stored procedure argument names
 
 Use `/WriteResults` to save the validation results to a text file
 * Use `/ResultsFile:ValidationResults.txt` to customize the filename
