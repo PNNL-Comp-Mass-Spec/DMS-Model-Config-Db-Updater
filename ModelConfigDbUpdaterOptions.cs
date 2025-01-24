@@ -12,7 +12,7 @@ namespace DMSModelConfigDbUpdater
         /// <summary>
         /// Program date
         /// </summary>
-        public const string PROGRAM_DATE = "March 2, 2023";
+        public const string PROGRAM_DATE = "January 23, 2024";
 
         [Option("InputDirectory", "Input", "I", ArgPosition = 1, HelpShowsDefault = false, IsInputFilePath = false,
             HelpText = "Directory with the DMS model config database files to update\n" +
