@@ -12,7 +12,7 @@ namespace DMSModelConfigDbUpdater
     internal class ModelConfigDbValidator : EventNotifier
     {
         // Ignore Spelling: bigint, bytea, citext, cstring, dbo, dms, gigasax, hotlink, hotlinks
-        // Ignore Spelling: inet, Levenshtein, lr, Postgres, Proc, proteinseqs, Sel, varchar, wellplate
+        // Ignore Spelling: inet, Levenshtein, lr, Postgres, Proc, proteinseqs, Sel, Validator, varchar, wellplate
 
         // ReSharper disable CommentTypo
 
@@ -1900,7 +1900,6 @@ namespace DMSModelConfigDbUpdater
                         }
                         else
                         {
-
                             OnWarningEvent(
                                 "{0,-25} stored procedure {1} does not exist in database {2} on server {3}",
                                 mDbUpdater.CurrentConfigDB + ":",

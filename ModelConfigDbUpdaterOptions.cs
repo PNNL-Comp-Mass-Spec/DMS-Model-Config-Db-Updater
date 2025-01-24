@@ -7,7 +7,7 @@ namespace DMSModelConfigDbUpdater
 {
     public class ModelConfigDbUpdaterOptions
     {
-        // Ignore Spelling: dataset, hotlink, hotlinks, Postgres, pre
+        // Ignore Spelling: App, dataset, hotlink, hotlinks, Postgres, pre
 
         /// <summary>
         /// Program date
